@@ -854,11 +854,11 @@ int64 static GetBlockValue(int nHeight, int64 nFees, uint256 prevHash)
         int rand4 = 0;
         int rand5 = 0;
        
-        if(nHeight < 100000)    
+        if(nHeight < 10000)    
         {
                 nSubsidy = (1 + rand) * OLDCOIN;
         }
-        else if(nHeight < 200000)      
+        else if(nHeight < 20000)      
         {
                 cseed_str = prevHash.ToString().substr(7,7);
                 cseed = cseed_str.c_str();
@@ -866,7 +866,7 @@ int64 static GetBlockValue(int nHeight, int64 nFees, uint256 prevHash)
                 rand1 = generateMTRandom(seed, 499999);
                 nSubsidy = (1 + rand1) * OLDCOIN;
         }
-        else if(nHeight < 300000)      
+        else if(nHeight < 30000)      
         {
                 cseed_str = prevHash.ToString().substr(6,7);
                 cseed = cseed_str.c_str();
@@ -874,7 +874,7 @@ int64 static GetBlockValue(int nHeight, int64 nFees, uint256 prevHash)
                 rand2 = generateMTRandom(seed, 249999);
                 nSubsidy = (1 + rand2) * OLDCOIN;
         }
-        else if(nHeight < 400000)      
+        else if(nHeight < 40000)      
         {
                 cseed_str = prevHash.ToString().substr(7,7);
                 cseed = cseed_str.c_str();
@@ -882,7 +882,7 @@ int64 static GetBlockValue(int nHeight, int64 nFees, uint256 prevHash)
                 rand3 = generateMTRandom(seed, 124999);
                 nSubsidy = (1 + rand3) * OLDCOIN;
         }
-        else if(nHeight < 500000)      
+        else if(nHeight < 50000)      
         {
                 cseed_str = prevHash.ToString().substr(7,7);
                 cseed = cseed_str.c_str();
@@ -890,7 +890,7 @@ int64 static GetBlockValue(int nHeight, int64 nFees, uint256 prevHash)
                 rand4 = generateMTRandom(seed, 62499);
                 nSubsidy = (1 + rand4) * OLDCOIN;
         }
-        else if(nHeight < 600000)      
+        else if(nHeight < 60000)      
         {
                 cseed_str = prevHash.ToString().substr(6,7);
                 cseed = cseed_str.c_str();
@@ -904,7 +904,7 @@ int64 static GetBlockValue(int nHeight, int64 nFees, uint256 prevHash)
 
 
 
-static int64 nTargetTimespan = 10 * 60; // FedoraCoin: every 4 hours
+static int64 nTargetTimespan = 10 * 60; // FedoraCoin: every 10 minutes
 static int64 nTargetSpacing = 60; // FedoraCoin: 1 minutes
 static const int64 nInterval = nTargetTimespan / nTargetSpacing;
 
@@ -933,7 +933,7 @@ unsigned int ComputeMinWork(unsigned int nBase, int64 nTime)
     return bnResult.GetCompact();
 }
 
-unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlock *pblock)
+unsigned int static GetNextWorkRequiredOld(const CBlockIndex* pindexLast, const CBlock *pblock)
 {
 	int nHeight = pindexLast->nHeight + 1;
 	
@@ -1007,6 +1007,96 @@ unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBl
         nActualTimespan = nActualTimespanMin;
     if (nActualTimespan > nActualTimespanMax)
         nActualTimespan = nActualTimespanMax;
+
+    // Retarget
+    CBigNum bnNew;
+    bnNew.SetCompact(pindexLast->nBits);
+    bnNew *= nActualTimespan;
+    bnNew /= nTargetTimespan;
+
+    if (bnNew > bnProofOfWorkLimit)
+        bnNew = bnProofOfWorkLimit;
+
+    /// debug print
+    printf("GetNextWorkRequired RETARGET\n");
+    printf("nTargetTimespan = %"PRI64d"    nActualTimespan = %"PRI64d"\n", nTargetTimespan, nActualTimespan);
+    printf("Before: %08x  %s\n", pindexLast->nBits, CBigNum().SetCompact(pindexLast->nBits).getuint256().ToString().c_str());
+    printf("After:  %08x  %s\n", bnNew.GetCompact(), bnNew.getuint256().ToString().c_str());
+
+    return bnNew.GetCompact();
+}
+
+unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlock *pblock)
+{
+	if((pindexLast->nHeight + 1) < 2500)
+		return GetNextWorkRequiredOld(pindexLast, pblock);
+	
+    unsigned int nProofOfWorkLimit = bnProofOfWorkLimit.GetCompact();
+
+    // Genesis block
+    if (pindexLast == NULL)
+        return nProofOfWorkLimit;
+
+    // Only change once per interval
+    if ((pindexLast->nHeight+1) % nInterval != 0)
+    {
+        // Special difficulty rule for testnet:
+        if (fTestNet)
+        {
+            // If the new block's timestamp is more than 2*nTargetSpacing minutes
+            // then allow mining of a min-difficulty block.
+            if (pblock->nTime > pindexLast->nTime + nTargetSpacing*2)
+                return nProofOfWorkLimit;
+            else
+            {
+                // Return the last non-special-min-difficulty-rules-block
+                const CBlockIndex* pindex = pindexLast;
+                while (pindex->pprev && pindex->nHeight % nInterval != 0 && pindex->nBits == nProofOfWorkLimit)
+                    pindex = pindex->pprev;
+                return pindex->nBits;
+            }
+        }
+
+        return pindexLast->nBits;
+    }
+
+    // FedoraCoin: This fixes an issue where a 51% attack can change difficulty at will.
+    // Go back the full period unless it's the first retarget after genesis. Code courtesy of Art Forz
+    int blockstogoback = nInterval-1;
+    if ((pindexLast->nHeight+1) != nInterval)
+        blockstogoback = nInterval;
+
+    // Go back by what we want to be 14 days worth of blocks
+    const CBlockIndex* pindexFirst = pindexLast;
+    for (int i = 0; pindexFirst && i < blockstogoback; i++)
+        pindexFirst = pindexFirst->pprev;
+    assert(pindexFirst);
+
+    // Limit adjustment step
+    int64 nActualTimespan = pindexLast->GetBlockTime() - pindexFirst->GetBlockTime();
+    printf("  nActualTimespan = %"PRI64d"  before bounds\n", nActualTimespan);
+
+	if(pindexLast->nHeight+1 > 10000)	
+	{
+		if (nActualTimespan < nTargetTimespan/4)
+			nActualTimespan = nTargetTimespan/4;
+		if (nActualTimespan > nTargetTimespan*4)
+			nActualTimespan = nTargetTimespan*4;
+	}
+	else if(pindexLast->nHeight+1 > 5000)
+	{
+		if (nActualTimespan < nTargetTimespan/8)
+			nActualTimespan = nTargetTimespan/8;
+		if (nActualTimespan > nTargetTimespan*4)
+			nActualTimespan = nTargetTimespan*4;
+	}
+	else 
+	{
+		if (nActualTimespan < nTargetTimespan/16)
+			nActualTimespan = nTargetTimespan/16;
+		if (nActualTimespan > nTargetTimespan*4)
+			nActualTimespan = nTargetTimespan*4;
+	}
 
     // Retarget
     CBigNum bnNew;
