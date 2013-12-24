@@ -2,5 +2,5 @@ Makefile
 build
 fedoracoin-qt
 qrc_bitcoin.cpp
-src/obj
+src/obj/*.o
 src/fedoracoind
