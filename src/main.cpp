@@ -854,11 +854,11 @@ int64 static GetBlockValue(int nHeight, int64 nFees, uint256 prevHash)
         int rand4 = 0;
         int rand5 = 0;
        
-        if(nHeight < 10000)    
+        if(nHeight < 100000)    
         {
                 nSubsidy = (1 + rand) * OLDCOIN;
         }
-        else if(nHeight < 20000)      
+        else if(nHeight < 200000)      
         {
                 cseed_str = prevHash.ToString().substr(7,7);
                 cseed = cseed_str.c_str();
@@ -866,7 +866,7 @@ int64 static GetBlockValue(int nHeight, int64 nFees, uint256 prevHash)
                 rand1 = generateMTRandom(seed, 499999);
                 nSubsidy = (1 + rand1) * OLDCOIN;
         }
-        else if(nHeight < 30000)      
+        else if(nHeight < 300000)      
         {
                 cseed_str = prevHash.ToString().substr(6,7);
                 cseed = cseed_str.c_str();
@@ -874,7 +874,7 @@ int64 static GetBlockValue(int nHeight, int64 nFees, uint256 prevHash)
                 rand2 = generateMTRandom(seed, 249999);
                 nSubsidy = (1 + rand2) * OLDCOIN;
         }
-        else if(nHeight < 40000)      
+        else if(nHeight < 400000)      
         {
                 cseed_str = prevHash.ToString().substr(7,7);
                 cseed = cseed_str.c_str();
@@ -882,7 +882,7 @@ int64 static GetBlockValue(int nHeight, int64 nFees, uint256 prevHash)
                 rand3 = generateMTRandom(seed, 124999);
                 nSubsidy = (1 + rand3) * OLDCOIN;
         }
-        else if(nHeight < 50000)      
+        else if(nHeight < 500000)      
         {
                 cseed_str = prevHash.ToString().substr(7,7);
                 cseed = cseed_str.c_str();
@@ -890,7 +890,7 @@ int64 static GetBlockValue(int nHeight, int64 nFees, uint256 prevHash)
                 rand4 = generateMTRandom(seed, 62499);
                 nSubsidy = (1 + rand4) * OLDCOIN;
         }
-        else if(nHeight < 60000)      
+        else if(nHeight < 600000)      
         {
                 cseed_str = prevHash.ToString().substr(6,7);
                 cseed = cseed_str.c_str();
