@@ -82,7 +82,7 @@ BitcoinGUI::BitcoinGUI(QWidget *parent):
 #endif
 
 	//specify a new font.
-	QFont newFont("Comic Sans MS", 10);
+	QFont newFont("Verdana", 10);
 	
 	//set font of application
 	QApplication::setFont(newFont);
