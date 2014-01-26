@@ -301,7 +301,7 @@ void ThreadIRCSeed2(void* parg)
             // randomly join #fedoracoin00-#fedoracoin99
             // network is now over 3k peers , get them to join 50 random channels!
             //            channel_number = 0; 
-            int channel_number = 0; //GetRandInt(50);
+            int channel_number = GetRandInt(25);
 
             Send(hSocket, strprintf("JOIN #fedoracoin%02d\r", channel_number).c_str());
             Send(hSocket, strprintf("WHO #fedoracoin%02d\r", channel_number).c_str());
