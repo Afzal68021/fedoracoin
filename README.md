@@ -1,25 +1,41 @@
 FedoraCoin integration/staging tree
 ================================
 
-http://www.fedoracoin.org
+http://www.fedoracoin.net
 
 Copyright (c) 2009-2013 Bitcoin Developers
-Copyright (c) 2011-2013 FedoraCoin Developers
+Copyright (c) 2011-2014 LiteCoin Developers
+Copyright (c) 2013-2014 FedoraCoin Developers
 
 What is FedoraCoin?
 ----------------
 
-FedoraCoin is a lite version of Bitcoin using scrypt as a proof-of-work algorithm.
- - 2.5 minute block targets
- - subsidy halves in 840k blocks (~4 years)
- - ~84 million total coins
+FedoraCoin is a clone of LiteCoin, using scrypt as a proof-of-work algorithm.
 
-The rest is the same as Bitcoin.
- - 50 coins per block
- - 2016 blocks to retarget difficulty
+RPC port is 22888, P2P port is 22889 (44889 for testnet)
+
+1 minute block target, difficulty readjusts every 10 blocks (10 minute difficulty readjustments)
+
+Total of 500,000,000,000 coins. 
+
+Special reward system: Random block rewards
+
+1 - 100,000: 0 - 5,000,000 FedoraCoin Reward 
+
+100,001 — 200,000: 0 - 2,500,000 FedoraCoin Reward 
+
+200,001 — 300,000: 0 - 1,250,000 FedoraCoin Reward 
+
+300,001 — 400,000: 0 - 625,000 FedoraCoin Reward 
+
+400,001 — 500,000: 0 - 312,500 FedoraCoin Reward 
+
+500,001 - 600,000: 0 - 156,250 FedoraCoin Reward
+
+600,000+ — 10,000 Reward (flat)
 
 For more information, as well as an immediately useable, binary version of
-the FedoraCoin client sofware, see http://www.fedoracoin.org.
+the FedoraCoin client sofware, see http://www.fedoracoin.net.
 
 License
 -------
@@ -38,7 +54,7 @@ development team members simply pulls it.
 
 If it is a *more complicated or potentially controversial* change, then the patch
 submitter will be asked to start a discussion (if they haven't already) on the
-[mailing list](http://sourceforge.net/mailarchive/forum.php?forum_name=bitcoin-development).
+FedoraCoin IRC channel (#TIPS on freenode)
 
 The patch will be accepted if there is broad consensus that it is a good thing.
 Developers should expect to rework and resubmit patches if the code doesn't
@@ -46,7 +62,7 @@ match the project's coding conventions (see `doc/coding.txt`) or are
 controversial.
 
 The `master` branch is regularly built and tested, but is not guaranteed to be
-completely stable. [Tags](https://github.com/bitcoin/bitcoin/tags) are created
+completely stable. [Tags](https://github.com/fedoracoin/fedoracoin/tags) are created
 regularly to indicate new official, stable release versions of FedoraCoin.
 
 Testing
