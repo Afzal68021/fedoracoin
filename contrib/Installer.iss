@@ -20,6 +20,7 @@ Source: "libstdc++-6.dll"; DestDir: "{app}"
 Source: "libwinpthread-1.dll"; DestDir: "{app}"
 Source: "QtCore4.dll"; DestDir: "{app}"
 Source: "QtGui4.dll"; DestDir: "{app}"
+Source: "QtNetwork4.dll"; DestDir: "{app}"
 
 [Icons]
 Name: "{group}\FedoraCoin"; Filename: "{app}\fedoracoin-qt.exe"
