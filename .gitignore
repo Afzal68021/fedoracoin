@@ -13,7 +13,7 @@ src/test_fedoracoin
 
 # Compilation and Qt preprocessor part
 *.qm
-Makefile
+/Makefile
 fedoracoin-qt
 FedoraCoin-Qt.app
 
@@ -30,5 +30,3 @@ qrc_*.cpp
 # Mac specific
 .DS_Store
 build
-
-!src/leveldb-*/Makefile
