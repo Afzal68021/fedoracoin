@@ -1,7 +1,7 @@
 [Setup]
 AppId=FedoraCoin
 AppName=FedoraCoin
-AppVersion=0.43
+AppVersion=0.55
 DefaultDirName={pf}\FedoraCoin
 DefaultGroupName=FedoraCoin
 UninstallDisplayIcon={app}\fedoracoin-qt.exe
@@ -9,7 +9,7 @@ Compression=lzma2
 SolidCompression=yes
 OutputDir=..\release
 SourceDir=..\release
-OutputBaseFilename=fedoracoin-0.43-win32
+OutputBaseFilename=fedoracoin-0.55-win32
 
 [Files]
 Source: "fedoracoin-qt.exe"; DestDir: "{app}"

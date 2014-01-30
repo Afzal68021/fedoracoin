@@ -1,6 +1,34 @@
-Makefile
-build
-fedoracoin-qt
-qrc_bitcoin.cpp
-src/obj/*.o
+src/*.exe
+src/fedoracoin
 src/fedoracoind
+src/test_fedoracoin
+.*.swp
+*.*~*
+*.bak
+*.rej
+*.orig
+*.o
+*.patch
+.fedoracoin
+
+# Compilation and Qt preprocessor part
+*.qm
+Makefile
+fedoracoin-qt
+FedoraCoin-Qt.app
+
+# Unit-tests
+Makefile.test
+fedoracoin-qt_test
+
+# Resources cpp
+qrc_*.cpp
+
+# Qt creator
+*.pro.user
+
+# Mac specific
+.DS_Store
+build
+
+!src/leveldb-*/Makefile

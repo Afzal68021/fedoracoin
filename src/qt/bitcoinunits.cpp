@@ -46,8 +46,8 @@ QString BitcoinUnits::description(int unit)
     switch(unit)
     {
     case BTC: return QString("FedoraCoins");
-    case mBTC: return QString("Milli-FedoraCoins (1 / 1,000)");
-    case uBTC: return QString("Micro-FedoraCoins(1 / 1,000,000)");
+    case mBTC: return QString("miniFedoras (1 / 1,000)");
+    case uBTC: return QString("tinyFedoras (1 / 1,000,000)");
     default: return QString("???");
     }
 }
@@ -99,7 +99,7 @@ QString BitcoinUnits::format(int unit, qint64 n, bool fPlus)
     QString quotient_str = QString::number(quotient);
     QString remainder_str = QString::number(remainder).rightJustified(num_decimals, '0');
 
-    // Right-trim excess 0's after the decimal point
+    // Right-trim excess zeros after the decimal point
     int nTrim = 0;
     for (int i = remainder_str.size()-1; i>=2 && (remainder_str.at(i) == '0'); --i)
         ++nTrim;
