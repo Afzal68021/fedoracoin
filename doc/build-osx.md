@@ -137,7 +137,7 @@ Creating a release build
 A fedoracoind binary is not included in the FedoraCoin-Qt.app bundle. You can ignore
 this section if you are building `fedoracoind` for your own use.
 
-If you are building `litecond` for others, your build machine should be set up
+If you are building `fedoracoind` for others, your build machine should be set up
 as follows for maximum compatibility:
 
 All dependencies should be compiled with these flags:
