@@ -498,7 +498,7 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn)
         }
 
         // notify an external script when a wallet transaction is received
-        std::string strCmd = GetArg("-txnotify", "");
+        strCmd = GetArg("-txnotify", "");
 
         if ( !strCmd.empty() && fInsertedNew)
         {
@@ -507,7 +507,7 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn)
         }
 
         // notify an external script when a wallet transaction is confirmed
-        std::string strCmd = GetArg("-confirmnotify", "");
+        strCmd = GetArg("-confirmnotify", "");
 
         if ( !strCmd.empty() && fUpdated)
         {
