@@ -14,7 +14,7 @@ What is FedoraCoin?
 
 FedoraCoin is a clone of LiteCoin, using scrypt as a proof-of-work algorithm.
 
-RPC port is 22888, P2P port is 22889 (44889 for testnet)
+RPC port is 22888, P2P port is 44889 (44890 for testnet)
 
 1 minute block target, difficulty readjusts every 10 blocks (10 minute difficulty readjustments)
 
