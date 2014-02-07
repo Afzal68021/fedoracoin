@@ -52,9 +52,9 @@ bool fTxIndex = false;
 unsigned int nCoinCacheSize = 5000;
 
 /** Fees smaller than this (in satoshi) are considered zero fee (for transaction creation) */
-int64 CTransaction::nMinTxFee = 100000;
+uint64 CTransaction::nMinTxFee = 100000;
 /** Fees smaller than this (in satoshi) are considered zero fee (for relaying) */
-int64 CTransaction::nMinRelayTxFee = 100000;
+uint64 CTransaction::nMinRelayTxFee = 100000;
 
 CMedianFilter<int> cPeerBlockCounts(8, 0); // Amount of blocks that other nodes claim to have
 
@@ -73,8 +73,8 @@ double dHashesPerSec = 0.0;
 int64 nHPSTimerStart = 0;
 
 // Settings
-int64 nTransactionFee = 0;
-int64 nMinimumInputValue = DUST_HARD_LIMIT;
+uint64 nTransactionFee = 0;
+uint64 nMinimumInputValue = DUST_HARD_LIMIT;
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -557,12 +557,12 @@ bool CTransaction::CheckTransaction(CValidationState &state) const
         return state.DoS(100, error("CTransaction::CheckTransaction() : size limits failed"));
 
     // Check for negative or overflow output values
-    int64 nValueOut = 0;
+    uint64 nValueOut = 0;
     BOOST_FOREACH(const CTxOut& txout, vout)
     {
         if (txout.nValue < 0)
             return state.DoS(100, error("CTransaction::CheckTransaction() : txout.nValue negative"));
-        if (txout.nValue > MAX_MONEY)
+        if (txout.nValue > MAX_TX_OUTPUT_VALUE)
             return state.DoS(100, error("CTransaction::CheckTransaction() : txout.nValue too high"));
         nValueOut += txout.nValue;
         if (!MoneyRange(nValueOut))
@@ -594,15 +594,15 @@ bool CTransaction::CheckTransaction(CValidationState &state) const
     return true;
 }
 
-int64 CTransaction::GetMinFee(unsigned int nBlockSize, bool fAllowFree,
+uint64 CTransaction::GetMinFee(unsigned int nBlockSize, bool fAllowFree,
                               enum GetMinFee_mode mode) const
 {
     // Base fee is either nMinTxFee or nMinRelayTxFee
-    int64 nBaseFee = (mode == GMF_RELAY) ? nMinRelayTxFee : nMinTxFee;
+    uint64 nBaseFee = (mode == GMF_RELAY) ? nMinRelayTxFee : nMinTxFee;
 
     unsigned int nBytes = ::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION);
     unsigned int nNewBlockSize = nBlockSize + nBytes;
-    int64 nMinFee = (1 + (int64)nBytes / 1000) * nBaseFee;
+    uint64 nMinFee = (1 + (uint64)nBytes / 1000) * nBaseFee;
 
     if (fAllowFree)
     {
@@ -626,12 +626,12 @@ int64 CTransaction::GetMinFee(unsigned int nBlockSize, bool fAllowFree,
     if (nBlockSize != 1 && nNewBlockSize >= MAX_BLOCK_SIZE_GEN/2)
     {
         if (nNewBlockSize >= MAX_BLOCK_SIZE_GEN)
-            return MAX_MONEY;
+            return MAX_TX_OUTPUT_VALUE;
         nMinFee *= MAX_BLOCK_SIZE_GEN / (MAX_BLOCK_SIZE_GEN - nNewBlockSize);
     }
 
     if (!MoneyRange(nMinFee))
-        nMinFee = MAX_MONEY;
+        nMinFee = MAX_TX_OUTPUT_VALUE;
     return nMinFee;
 }
 
@@ -751,11 +751,11 @@ bool CTxMemPool::accept(CValidationState &state, CTransaction &tx, bool fCheckIn
         // you should add code here to check that the transaction does a
         // reasonable number of ECDSA signature verifications.
 
-        int64 nFees = tx.GetValueIn(view)-tx.GetValueOut();
+        uint64 nFees = tx.GetValueIn(view)-tx.GetValueOut();
         unsigned int nSize = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
 
         // Don't accept it if it can't get into a block
-        int64 txMinFee = tx.GetMinFee(1000, true, GMF_RELAY);
+        uint64 txMinFee = tx.GetMinFee(1000, true, GMF_RELAY);
         if (fLimitFree && nFees < txMinFee)
             return error("CTxMemPool::accept() : not enough fees %s, %"PRI64d" < %"PRI64d,
                          hash.ToString().c_str(),
@@ -1072,21 +1072,21 @@ int static generateMTRandom(unsigned int s, int range)
     return dist(gen);
 }
 
-int64 static GetBlockValue(int nHeight, int64 nFees, uint256 prevHash)
+uint64 static GetBlockValue(int nHeight, uint64 nFees, uint256 prevHash)
 {
-    int64 nSubsidy = 50000 * COIN;
+    uint64 nSubsidy = 50000 * COIN;
 
     std::string cseed_str = prevHash.ToString().substr(7,7);
     const char* cseed = cseed_str.c_str();
     long seed = hex2long(cseed);
     int rand = 0;
 
-    if(nHeight < 52000)
+    if(nHeight < 52000) // blocks 0 - 51,999
     {
         rand = generateMTRandom(seed, 999999);
         nSubsidy = (1 + rand) * OLDCOIN;
     }
-    else if(nHeight < 104000)
+    else if(nHeight < 104000) // blocks 52,000 - 103,999
     {
         cseed_str = prevHash.ToString().substr(7,7);
         cseed = cseed_str.c_str();
@@ -1094,7 +1094,7 @@ int64 static GetBlockValue(int nHeight, int64 nFees, uint256 prevHash)
         rand = generateMTRandom(seed, 2499999);
         nSubsidy = (1 + rand) * COIN;
     }
-    else if(nHeight < 208000)
+    else if(nHeight < 208000) // blocks 104,000 - 207,999
     {
         cseed_str = prevHash.ToString().substr(6,7);
         cseed = cseed_str.c_str();
@@ -1102,7 +1102,7 @@ int64 static GetBlockValue(int nHeight, int64 nFees, uint256 prevHash)
         rand = generateMTRandom(seed, 1249999);
         nSubsidy = (1 + rand) * COIN;
     }
-    else if(nHeight < 416000)
+    else if(nHeight < 416000) // blocks 208,000 - 415,999
     {
         cseed_str = prevHash.ToString().substr(7,7);
         cseed = cseed_str.c_str();
@@ -1110,7 +1110,7 @@ int64 static GetBlockValue(int nHeight, int64 nFees, uint256 prevHash)
         rand = generateMTRandom(seed, 624999);
         nSubsidy = (1 + rand) * COIN;
     }
-    else if(nHeight < 832000)
+    else if(nHeight < 832000) // blocks 416,000 - 831,999
     {
         cseed_str = prevHash.ToString().substr(7,7);
         cseed = cseed_str.c_str();
@@ -1118,7 +1118,7 @@ int64 static GetBlockValue(int nHeight, int64 nFees, uint256 prevHash)
         rand = generateMTRandom(seed, 312499);
         nSubsidy = (1 + rand) * COIN;
     }
-    else if(nHeight < 1664000)
+    else if(nHeight < 1664000) // blocks 832,000 - 1,663,999
     {
         cseed_str = prevHash.ToString().substr(7,7);
         cseed = cseed_str.c_str();
@@ -1126,8 +1126,46 @@ int64 static GetBlockValue(int nHeight, int64 nFees, uint256 prevHash)
         rand = generateMTRandom(seed, 156249);
         nSubsidy = (1 + rand) * COIN;
     }
+    else // blocks 1,664,000+
+    {
+        int currentMinedCoins = GetChainValue(nBestHeight);
+        if(currentMinedCoins + nSubsidy > MAX_COINS)
+            nSubsidy = MAX_COINS - currentMinedCoins;
+    }
 
     return nSubsidy + nFees;
+}
+
+extern uint64 GetChainValue(int nNumBlocks)
+{
+    int count = nBestHeight;
+    if(nNumBlocks < count)
+        count = nNumBlocks;
+
+    CBlockIndex* current = pindexBest;
+
+    // last checkpoint is genesis block if checkpoint isnt set
+    int lastCheckpoint = 0;
+    uint64 lastCheckpointWorth = 440;
+
+    CBlockIndex* pcheckpoint = Checkpoints::GetLastCheckpoint(mapBlockIndex);
+    if(pcheckpoint)
+    {
+        lastCheckpoint = pcheckpoint->nHeight;
+        lastCheckpointWorth = Checkpoints::GetLastCheckpointValue();
+    }
+
+    uint64 total = 0;
+    for(int i = count; i > lastCheckpoint; i--)
+    {
+        const uint256* hash = current->pprev->phashBlock;
+        total += GetBlockValue(i, 0, *hash);
+        current = current->pprev;
+    }
+
+    // add last checkpoint value
+    total += (lastCheckpointWorth * COIN);
+    return total;
 }
 
 static int64 nTargetTimespan = 10 * 60; // change difficulty every 10 minutes with old algos
@@ -1551,12 +1589,12 @@ const CTxOut &CTransaction::GetOutputFor(const CTxIn& input, CCoinsViewCache& vi
     return coins.vout[input.prevout.n];
 }
 
-int64 CTransaction::GetValueIn(CCoinsViewCache& inputs) const
+uint64 CTransaction::GetValueIn(CCoinsViewCache& inputs) const
 {
     if (IsCoinBase())
         return 0;
 
-    int64 nResult = 0;
+    uint64 nResult = 0;
     for (unsigned int i = 0; i < vin.size(); i++)
         nResult += GetOutputFor(vin[i], inputs).nValue;
 
@@ -1642,8 +1680,8 @@ bool CTransaction::CheckInputs(CValidationState &state, CCoinsViewCache &inputs,
         // While checking, GetBestBlock() refers to the parent block.
         // This is also true for mempool checks.
         int nSpendHeight = inputs.GetBestBlock()->nHeight + 1;
-        int64 nValueIn = 0;
-        int64 nFees = 0;
+        uint64 nValueIn = 0;
+        uint64 nFees = 0;
         for (unsigned int i = 0; i < vin.size(); i++)
         {
             const COutPoint &prevout = vin[i].prevout;
@@ -1666,7 +1704,7 @@ bool CTransaction::CheckInputs(CValidationState &state, CCoinsViewCache &inputs,
             return state.DoS(100, error("CheckInputs() : %s value in < value out", GetHash().ToString().c_str()));
 
         // Tally transaction fees
-        int64 nTxFee = nValueIn - GetValueOut();
+        uint64 nTxFee = nValueIn - GetValueOut();
         if (nTxFee < 0)
             return state.DoS(100, error("CheckInputs() : %s nTxFee < 0", GetHash().ToString().c_str()));
         nFees += nTxFee;
@@ -1881,7 +1919,7 @@ bool CBlock::ConnectBlock(CValidationState &state, CBlockIndex* pindex, CCoinsVi
     CCheckQueueControl<CScriptCheck> control(fScriptChecks && nScriptCheckThreads ? &scriptcheckqueue : NULL);
 
     int64 nStart = GetTimeMicros();
-    int64 nFees = 0;
+    uint64 nFees = 0;
     int nInputs = 0;
     unsigned int nSigOps = 0;
     CDiskTxPos pos(pindex->GetBlockPos(), GetSizeOfCompactSize(vtx.size()));
@@ -4502,7 +4540,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
     nBlockMinSize = std::min(nBlockMaxSize, nBlockMinSize);
 
     // Collect memory pool transactions into the block
-    int64 nFees = 0;
+    uint64 nFees = 0;
     {
         LOCK2(cs_main, mempool.cs);
         CBlockIndex* pindexPrev = pindexBest;
@@ -4524,7 +4562,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
 
             COrphan* porphan = NULL;
             double dPriority = 0;
-            int64 nTotalIn = 0;
+            uint64 nTotalIn = 0;
             bool fMissingInputs = false;
             BOOST_FOREACH(const CTxIn& txin, tx.vin)
             {
@@ -4558,7 +4596,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
                 }
                 const CCoins &coins = view.GetCoins(txin.prevout.hash);
 
-                int64 nValueIn = coins.vout[txin.prevout.n].nValue;
+                uint64 nValueIn = coins.vout[txin.prevout.n].nValue;
                 nTotalIn += nValueIn;
 
                 int nConf = pindexPrev->nHeight - coins.nHeight + 1;
@@ -4631,7 +4669,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
             if (!tx.HaveInputs(view))
                 continue;
 
-            int64 nTxFees = tx.GetValueIn(view)-tx.GetValueOut();
+            uint64 nTxFees = tx.GetValueIn(view)-tx.GetValueOut();
 
             nTxSigOps += tx.GetP2SHSigOpCount(view);
             if (nBlockSigOps + nTxSigOps >= MAX_BLOCK_SIGOPS)

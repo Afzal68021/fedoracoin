@@ -70,7 +70,19 @@ Object blockToJSON(const CBlock& block, const CBlockIndex* blockindex)
     return result;
 }
 
+Value getchainvalue(const Array& params, bool fHelp)
+{
+    if (fHelp || (params.size() != 0 && params.size() != 1))
+        throw runtime_error(
+            "getchainvalue <height>\n"
+            "Returns the total amount of coins mined on the current chain up the to given height.");
 
+    int nHeight = nBestHeight;
+    if(params.size() == 1)
+        nHeight = params[0].get_int();
+
+    return ValueFromAmount(GetChainValue(nHeight));
+}
 Value getblockcount(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
@@ -110,7 +122,7 @@ Value settxfee(const Array& params, bool fHelp)
             "<amount> is a real and is rounded to the nearest 0.00000001");
 
     // Amount
-    int64 nAmount = 0;
+    uint64 nAmount = 0;
     if (params[0].get_real() != 0.0)
         nAmount = AmountFromValue(params[0]);        // rejects 0.0 amounts
 

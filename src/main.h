@@ -50,12 +50,14 @@ static const unsigned int UNDOFILE_CHUNK_SIZE = 0x100000; // 1 MiB
 /** Fake height value used in CCoins to signify they are only in the memory pool (since 0.8) */
 static const unsigned int MEMPOOL_HEIGHT = 0x7FFFFFFF;
 /** Dust Soft Limit, allowed with additional fee per output */
-static const int64 DUST_SOFT_LIMIT = 100000; // 0.001 TIPS
+static const uint64 DUST_SOFT_LIMIT = 100000; // 0.001 TIPS
 /** Dust Hard Limit, ignored as wallet inputs (mininput default) */
-static const int64 DUST_HARD_LIMIT = 1000;   // 0.00001 TIPS mininput
+static const uint64 DUST_HARD_LIMIT = 1000;   // 0.00001 TIPS mininput
 /** No amount larger than this (in satoshi) is valid */
-static const uint64 MAX_MONEY = 2500000000 * COIN;
-inline bool MoneyRange(int64 nValue) { return (nValue >= 0 && nValue <= MAX_MONEY); }
+static const uint64 MAX_TX_OUTPUT_VALUE = 2500000000 * COIN;
+inline bool MoneyRange(uint64 nValue) { return (nValue <= MAX_TX_OUTPUT_VALUE); }
+/** The max amount of coins we allow to be generated */
+static const uint64 MAX_COINS = 500000000000 * COIN;
 /** Coinbase transaction outputs can only be spent after this number of new blocks (network rule) */
 static const int COINBASE_MATURITY = 30;
 /** Threshold for nLockTime: below this value it is interpreted as block number, otherwise as UNIX timestamp. */
@@ -75,7 +77,7 @@ extern CScript COINBASE_FLAGS;
 
 
 
-
+extern uint64 GetChainValue(int nNumBlocks);
 extern CCriticalSection cs_main;
 extern std::map<uint256, CBlockIndex*> mapBlockIndex;
 extern std::set<CBlockIndex*, CBlockIndexWorkComparator> setBlockIndexValid;
@@ -105,8 +107,8 @@ extern bool fTxIndex;
 extern unsigned int nCoinCacheSize;
 
 // Settings
-extern int64 nTransactionFee;
-extern int64 nMinimumInputValue;
+extern uint64 nTransactionFee;
+extern uint64 nMinimumInputValue;
 
 // Minimum disk space required - used in CheckDiskSpace()
 static const uint64 nMinDiskSpace = 52428800;
@@ -400,7 +402,7 @@ public:
 class CTxOut
 {
 public:
-    int64 nValue;
+    uint64 nValue;
     CScript scriptPubKey;
 
     CTxOut()
@@ -408,7 +410,7 @@ public:
         SetNull();
     }
 
-    CTxOut(int64 nValueIn, CScript scriptPubKeyIn)
+    CTxOut(uint64 nValueIn, CScript scriptPubKeyIn)
     {
         nValue = nValueIn;
         scriptPubKey = scriptPubKeyIn;
@@ -422,13 +424,13 @@ public:
 
     void SetNull()
     {
-        nValue = -1;
+        nValue = 0xFFFFFFFFFFFFFFFF;
         scriptPubKey.clear();
     }
 
     bool IsNull() const
     {
-        return (nValue == -1);
+        return (nValue == 0xFFFFFFFFFFFFFFFF);
     }
 
     uint256 GetHash() const
@@ -477,8 +479,8 @@ enum GetMinFee_mode
 class CTransaction
 {
 public:
-    static int64 nMinTxFee;
-    static int64 nMinRelayTxFee;
+    static uint64 nMinTxFee;
+    static uint64 nMinRelayTxFee;
     static const int CURRENT_VERSION=1;
     int nVersion;
     std::vector<CTxIn> vin;
@@ -599,9 +601,9 @@ public:
     /** Amount of bitcoins spent by this transaction.
         @return sum of all outputs (note: does not include fees)
      */
-    int64 GetValueOut() const
+    uint64 GetValueOut() const
     {
-        int64 nValueOut = 0;
+        uint64 nValueOut = 0;
         BOOST_FOREACH(const CTxOut& txout, vout)
         {
             nValueOut += txout.nValue;
@@ -618,7 +620,7 @@ public:
         @param[in] mapInputs	Map of previous transactions that have outputs we're spending
         @return	Sum of value of all inputs (scriptSigs)
      */
-    int64 GetValueIn(CCoinsViewCache& mapInputs) const;
+    uint64 GetValueIn(CCoinsViewCache& mapInputs) const;
 
     static bool AllowFree(double dPriority)
     {
@@ -630,7 +632,7 @@ public:
 // Apply the effects of this transaction on the UTXO set represented by view
 void UpdateCoins(const CTransaction& tx, CValidationState &state, CCoinsViewCache &inputs, CTxUndo &txundo, int nHeight, const uint256 &txhash);
 
-    int64 GetMinFee(unsigned int nBlockSize=1, bool fAllowFree=true, enum GetMinFee_mode mode=GMF_BLOCK) const;
+uint64 GetMinFee(unsigned int nBlockSize=1, bool fAllowFree=true, enum GetMinFee_mode mode=GMF_BLOCK) const;
 
     friend bool operator==(const CTransaction& a, const CTransaction& b)
     {
@@ -2137,7 +2139,7 @@ struct CCoinsStats
     uint64 nTransactionOutputs;
     uint64 nSerializedSize;
     uint256 hashSerialized;
-    int64 nTotalAmount;
+    uint64 nTotalAmount;
 
     CCoinsStats() : nHeight(0), hashBlock(0), nTransactions(0), nTransactionOutputs(0), nSerializedSize(0), hashSerialized(0), nTotalAmount(0) {}
 };

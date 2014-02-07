@@ -71,7 +71,7 @@ static bool ThreadSafeMessageBox(const std::string& message, const std::string& 
     }
 }
 
-static bool ThreadSafeAskFee(int64 nFeeRequired)
+static bool ThreadSafeAskFee(uint64 nFeeRequired)
 {
     if(!guiref)
         return false;

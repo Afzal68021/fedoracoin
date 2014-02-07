@@ -5,6 +5,7 @@
 #define BITCOIN_CHECKPOINT_H
 
 #include <map>
+#include "uint256.h"
 
 class uint256;
 class CBlockIndex;
@@ -14,6 +15,8 @@ class CBlockIndex;
  */
 namespace Checkpoints
 {
+    uint64 GetLastCheckpointValue();
+
     // Returns true if block passes checkpoint checks
     bool CheckBlock(int nHeight, const uint256& hash);
 

@@ -386,13 +386,13 @@ void ParseString(const string& str, char c, vector<string>& v)
 }
 
 
-string FormatMoney(int64 n, bool fPlus)
+string FormatMoney(uint64 n, bool fPlus)
 {
     // Note: not using straight sprintf here because we do NOT want
     // localized number formatting.
-    int64 n_abs = (n > 0 ? n : -n);
-    int64 quotient = n_abs/COIN;
-    int64 remainder = n_abs%COIN;
+    uint64 n_abs = (n > 0 ? n : -n);
+    uint64 quotient = n_abs/COIN;
+    uint64 remainder = n_abs%COIN;
     string str = strprintf("%"PRI64d".%08"PRI64d, quotient, remainder);
 
     // Right-trim excess zeros before the decimal point:
@@ -410,15 +410,15 @@ string FormatMoney(int64 n, bool fPlus)
 }
 
 
-bool ParseMoney(const string& str, int64& nRet)
+bool ParseMoney(const string& str, uint64& nRet)
 {
     return ParseMoney(str.c_str(), nRet);
 }
 
-bool ParseMoney(const char* pszIn, int64& nRet)
+bool ParseMoney(const char* pszIn, uint64& nRet)
 {
     string strWhole;
-    int64 nUnits = 0;
+    uint64 nUnits = 0;
     const char* p = pszIn;
     while (isspace(*p))
         p++;
@@ -427,7 +427,7 @@ bool ParseMoney(const char* pszIn, int64& nRet)
         if (*p == '.')
         {
             p++;
-            int64 nMult = CENT*10;
+            uint64 nMult = CENT*10;
             while (isdigit(*p) && (nMult > 0))
             {
                 nUnits += nMult * (*p++ - '0');
@@ -448,8 +448,8 @@ bool ParseMoney(const char* pszIn, int64& nRet)
         return false;
     if (nUnits < 0 || nUnits > COIN)
         return false;
-    int64 nWhole = atoi64(strWhole);
-    int64 nValue = nWhole*COIN + nUnits;
+    uint64 nWhole = atoi64(strWhole);
+    uint64 nValue = nWhole*COIN + nUnits;
 
     nRet = nValue;
     return true;
@@ -594,6 +594,13 @@ int64 GetArg(const std::string& strArg, int64 nDefault)
 {
     if (mapArgs.count(strArg))
         return atoi64(mapArgs[strArg]);
+    return nDefault;
+}
+
+int64 GetArg(const std::string& strArg, uint64 nDefault)
+{
+    if (mapArgs.count(strArg))
+        return (uint64)atoi64(mapArgs[strArg]);
     return nDefault;
 }
 

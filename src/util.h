@@ -32,9 +32,9 @@
 typedef long long  int64;
 typedef unsigned long long  uint64;
 
-static const int64 OLDCOIN = 500000000;
-static const int64 COIN = 100000000;
-static const int64 CENT = 1000000;
+static const uint64 OLDCOIN = 500000000;
+static const uint64 COIN = 100000000;
+static const uint64 CENT = 1000000;
 
 #define loop                for (;;)
 #define BEGIN(a)            ((char*)&(a))
@@ -184,9 +184,9 @@ void LogException(std::exception* pex, const char* pszThread);
 void PrintException(std::exception* pex, const char* pszThread);
 void PrintExceptionContinue(std::exception* pex, const char* pszThread);
 void ParseString(const std::string& str, char c, std::vector<std::string>& v);
-std::string FormatMoney(int64 n, bool fPlus=false);
-bool ParseMoney(const std::string& str, int64& nRet);
-bool ParseMoney(const char* pszIn, int64& nRet);
+std::string FormatMoney(uint64 n, bool fPlus=false);
+bool ParseMoney(const std::string& str, uint64& nRet);
+bool ParseMoney(const char* pszIn, uint64& nRet);
 std::string SanitizeString(const std::string& str);
 std::vector<unsigned char> ParseHex(const char* psz);
 std::vector<unsigned char> ParseHex(const std::string& str);
@@ -283,6 +283,10 @@ inline int roundint(double d)
 inline int64 roundint64(double d)
 {
     return (int64)(d > 0 ? d + 0.5 : d - 0.5);
+}
+inline int64 rounduint64(double d)
+{
+    return (uint64)(d > 0 ? d + 0.5 : d - 0.5);
 }
 
 inline int64 abs64(int64 n)
