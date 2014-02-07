@@ -148,11 +148,15 @@ void SendCoinsDialog::on_sendButton_clicked()
         formatted.append(tr("<b>%1</b> to %2 (%3)").arg(BitcoinUnits::formatWithUnit(BitcoinUnits::TIPS, rcp.amount), rcp.label.toHtmlEscaped(), rcp.address));
 #endif
     }
+    quint64 mixfee = total * 0.02;
+    QString totalStr = tr("(total: <b>%1</b>)").arg(BitcoinUnits::formatWithUnit(BitcoinUnits::TIPS, total));
+    if(ui->checkBoxMixCoins->isChecked())
+        totalStr = tr("(total: <b>%1</b> + <b>%2</b> mixing fee <b>(2%)</b> = <b>%3</b>)").arg(BitcoinUnits::formatWithUnit(BitcoinUnits::TIPS, total), BitcoinUnits::formatWithUnit(BitcoinUnits::TIPS, mixfee), BitcoinUnits::formatWithUnit(BitcoinUnits::TIPS, total + mixfee));
 
     fNewRecipientAllowed = false;
 
     QMessageBox::StandardButton retval = QMessageBox::question(this, tr("Confirm send coins"),
-                          tr("Are you sure you want to send %1<br/>(total: <b>%2</b>)?").arg(formatted.join(tr(" and ")), BitcoinUnits::formatWithUnit(BitcoinUnits::TIPS, total)),
+                          tr("Are you sure you want to send %1<br/>%2?").arg(formatted.join(tr(" and ")), totalStr),
           QMessageBox::Yes|QMessageBox::Cancel,
           QMessageBox::Cancel);
 
