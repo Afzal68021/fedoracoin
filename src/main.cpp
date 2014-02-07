@@ -33,7 +33,8 @@ CTxMemPool mempool;
 unsigned int nTransactionsUpdated = 0;
 
 map<uint256, CBlockIndex*> mapBlockIndex;
-uint256 hashGenesisBlock("0x746b18d1b206b817408c355a256a144e740579b6729043d184574642077f2054");
+uint256 nGenesisBlockHash("0x746b18d1b206b817408c355a256a144e740579b6729043d184574642077f2054");
+uint256 nGenesisMerkleRoot("0x51de661d58580e9d49e8d2b6a620c52bb6776953f2410d5814106120ad894f65");
 static CBigNum bnProofOfWorkLimit(~uint256(0) >> 20); // FedoraCoin: starting difficulty is 1 / 2^12
 CBlockIndex* pindexGenesisBlock = NULL;
 int nBestHeight = -1;
@@ -1839,7 +1840,7 @@ bool CBlock::ConnectBlock(CValidationState &state, CBlockIndex* pindex, CCoinsVi
 
     // Special case for the genesis block, skipping connection of its transactions
     // (its coinbase is unspendable)
-    if (GetHash() == hashGenesisBlock) {
+    if (GetHash() == nGenesisBlockHash) {
         view.SetBestBlock(pindex);
         pindexGenesisBlock = pindex;
         return true;
@@ -2395,7 +2396,7 @@ bool CBlock::AcceptBlock(CValidationState &state, CDiskBlockPos *dbp)
     // Get prev block index
     CBlockIndex* pindexPrev = NULL;
     int nHeight = 0;
-    if (hash != hashGenesisBlock) {
+    if (hash != nGenesisBlockHash) {
         map<uint256, CBlockIndex*>::iterator mi = mapBlockIndex.find(hashPrevBlock);
         if (mi == mapBlockIndex.end())
             return state.DoS(10, error("AcceptBlock() : prev block not found"));
@@ -2965,7 +2966,8 @@ bool LoadBlockIndex()
         pchMessageStart[1] = 0xad;
         pchMessageStart[2] = 0x24;
         pchMessageStart[3] = 0x48;
-        //hashGenesisBlock = uint256("0xf5ae71e26c74beacc88382716aced69cddf3dffff24f384e1808905e0188f68f");
+        nGenesisBlockHash = uint256("0x753665c2f084de3a854af1d012f47d86a80a3ada4631e8a1dac198f658ab6224");
+        nGenesisMerkleRoot = uint256("0xf86ce0440e49d9354311a6af9feddc8b61361605aa109a100606639876638131");
     }
 
     //
@@ -2998,36 +3000,69 @@ bool InitBlockIndex() {
         //   vMerkleTree: 97ddfbbae6
 
         // Genesis block
+        CBlock block;
+        block.hashPrevBlock = 0;
+        block.nVersion = 1;
+        block.nTime    = 1387666072;
+        block.nBits    = 0x1e0ffff0;
+        block.nNonce   = 644969;
         const char* pszTimestamp = "In this moment I am Euphoric, not because of any government's own archaic Fiat system, but because of the power of my own Fedoracoin mining rig - DeShizz";
+        if(fTestNet)
+        {
+            block.nTime = 1391748919;
+            block.nNonce = 224279;
+            pszTimestamp = "test block please ignore";
+        }
+
         CTransaction txNew;
         txNew.vin.resize(1);
         txNew.vout.resize(1);
         txNew.vin[0].scriptSig = CScript() << 486604799 << CBigNum(4) << vector<unsigned char>((const unsigned char*)pszTimestamp, (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
         txNew.vout[0].nValue = 88 * OLDCOIN;
         txNew.vout[0].scriptPubKey = CScript() << ParseHex("040184710fa689ad5023690c80f3a49c8f13f8d45b8c857fbcbc8bc4a8e4d3eb4b10f4d4604fa08dce601aaf0f470216fe1b51850b4acf21b179c45070ac7b03a9") << OP_CHECKSIG;
-        CBlock block;
+
         block.vtx.push_back(txNew);
-        block.hashPrevBlock = 0;
         block.hashMerkleRoot = block.BuildMerkleTree();
-        block.nVersion = 1;
-        block.nTime    = 1387666072;
-        block.nBits    = 0x1e0ffff0;
-        block.nNonce   = 644969;
 
-        if (fTestNet)
-        {
-            block.nTime    = 1387666072;
-            block.nNonce   = 0;
-        }
-
-        //// debug print
+        // debug print
         uint256 hash = block.GetHash();
-        printf("%s\n", hash.ToString().c_str());
-        printf("%s\n", hashGenesisBlock.ToString().c_str());
-        printf("%s\n", block.hashMerkleRoot.ToString().c_str());
-        assert(block.hashMerkleRoot == uint256("0x51de661d58580e9d49e8d2b6a620c52bb6776953f2410d5814106120ad894f65"));
+        printf("Genesis hash: %s\n", hash.ToString().c_str());
+        printf("Expected hash: %s\n", nGenesisBlockHash.ToString().c_str());
+        printf("Genesis merkle root: %s\n", block.hashMerkleRoot.ToString().c_str());
+        printf("Expected merkle root: %s\n", nGenesisMerkleRoot.ToString().c_str());
+        assert(block.hashMerkleRoot == nGenesisMerkleRoot);
         block.print();
-        assert(hash == hashGenesisBlock);
+
+        if (true && hash != nGenesisBlockHash)
+        {
+            printf("Searching for genesis block...\n");
+            // This will figure out a valid hash and Nonce if you're
+            // creating a different genesis block:
+            uint256 hashTarget = CBigNum().SetCompact(block.nBits).getuint256();
+            uint256 thash;
+            char scratchpad[SCRYPT_SCRATCHPAD_SIZE];
+
+            loop
+            {
+                scrypt_1024_1_1_256_sp(BEGIN(block.nVersion), BEGIN(thash), scratchpad);
+                if (thash <= hashTarget)
+                    break;
+                if ((block.nNonce & 0xFFF) == 0)
+                {
+                    printf("nonce %08X: hash = %s (target = %s)\n", block.nNonce, thash.ToString().c_str(), hashTarget.ToString().c_str());
+                }
+                ++block.nNonce;
+                if (block.nNonce == 0)
+                {
+                    printf("NONCE WRAPPED, incrementing time\n");
+                    ++block.nTime;
+                }
+            }
+            printf("block.nTime = %u \n", block.nTime);
+            printf("block.nNonce = %u \n", block.nNonce);
+            printf("block.GetHash = %s\n", block.GetHash().ToString().c_str());
+        }
+        assert(hash == nGenesisBlockHash);
 
         // Start new block file
         try {

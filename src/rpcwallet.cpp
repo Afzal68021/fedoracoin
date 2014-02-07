@@ -4,6 +4,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <boost/assign/list_of.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include "wallet.h"
 #include "walletdb.h"
@@ -267,39 +268,6 @@ Value setmininput(const Array& params, bool fHelp)
 
     nMinimumInputValue = nAmount;
     return true;
-}
-
-
-Value sendtoaddress(const Array& params, bool fHelp)
-{
-    if (fHelp || params.size() < 2 || params.size() > 4)
-        throw runtime_error(
-            "sendtoaddress <fedoracoinaddress> <amount> [comment] [comment-to]\n"
-            "<amount> is a real and is rounded to the nearest 0.00000001"
-            + HelpRequiringPassphrase());
-
-    CBitcoinAddress address(params[0].get_str());
-    if (!address.IsValid())
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid FedoraCoin address");
-
-    // Amount
-    int64 nAmount = AmountFromValue(params[1]);
-
-    // Wallet comments
-    CWalletTx wtx;
-    if (params.size() > 2 && params[2].type() != null_type && !params[2].get_str().empty())
-        wtx.mapValue["comment"] = params[2].get_str();
-    if (params.size() > 3 && params[3].type() != null_type && !params[3].get_str().empty())
-        wtx.mapValue["to"]      = params[3].get_str();
-
-    if (pwalletMain->IsLocked())
-        throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Please enter the wallet passphrase with walletpassphrase first.");
-
-    string strError = pwalletMain->SendMoneyToDestination(address.Get(), nAmount, wtx);
-    if (strError != "")
-        throw JSONRPCError(RPC_WALLET_ERROR, strError);
-
-    return wtx.GetHash().GetHex();
 }
 
 Value listaddressgroupings(const Array& params, bool fHelp)
@@ -625,16 +593,68 @@ Value movecmd(const Array& params, bool fHelp)
     return true;
 }
 
+Value sendtoaddress(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() < 2 || params.size() > 4)
+        throw runtime_error(
+            "sendtoaddress <fedoracoinaddress>[:mixed] <amount> [comment] [comment-to]\n"
+            "<amount> is a real and is rounded to the nearest 0.00000001"
+            "coins can be mixed by appending :mixed to the destination address, which will conceal the address you sent them from"
+            + HelpRequiringPassphrase());
+
+    string strAddress = params[0].get_str();
+    size_t iSeperator = strAddress.find_last_of(":");
+    bool bMixCoins = false;
+    if(iSeperator != std::string::npos)
+    {
+        string action = strAddress.substr(iSeperator+1);
+        strAddress = strAddress.substr(0, iSeperator);
+        bMixCoins = boost::iequals(action, "mixed");
+    }
+
+    CBitcoinAddress address(strAddress);
+    if (!address.IsValid())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid FedoraCoin address");
+
+    // Amount
+    int64 nAmount = AmountFromValue(params[1]);
+
+    // Wallet comments
+    CWalletTx wtx;
+    if (params.size() > 2 && params[2].type() != null_type && !params[2].get_str().empty())
+        wtx.mapValue["comment"] = params[2].get_str();
+    if (params.size() > 3 && params[3].type() != null_type && !params[3].get_str().empty())
+        wtx.mapValue["to"]      = params[3].get_str();
+
+    if (pwalletMain->IsLocked())
+        throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Please enter the wallet passphrase with walletpassphrase first.");
+
+    string strError = pwalletMain->SendMoneyToDestination(address.Get(), nAmount, wtx, bMixCoins);
+    if (strError != "")
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+
+    return wtx.GetHash().GetHex();
+}
 
 Value sendfrom(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 3 || params.size() > 6)
         throw runtime_error(
-            "sendfrom <fromaccount> <tofedoracoinaddress> <amount> [minconf=1] [comment] [comment-to]\n"
+            "sendfrom <fromaccount>[:mixed] <tofedoracoinaddress> <amount> [minconf=1] [comment] [comment-to]\n"
             "<amount> is a real and is rounded to the nearest 0.00000001"
+                "coins can be mixed by appending :mixed to the account name, which will conceal the address you sent them from"
             + HelpRequiringPassphrase());
 
     string strAccount = AccountFromValue(params[0]);
+    size_t iSeperator = strAccount.find_last_of(":");
+    bool bMixCoins = false;
+    if(iSeperator != std::string::npos)
+    {
+        string action = strAccount.substr(iSeperator+1);
+        strAccount = strAccount.substr(0, iSeperator);
+        bMixCoins = boost::iequals(action, "mixed");
+    }
+
     CBitcoinAddress address(params[1].get_str());
     if (!address.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid FedoraCoin address");
@@ -658,7 +678,7 @@ Value sendfrom(const Array& params, bool fHelp)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Account has insufficient funds");
 
     // Send
-    string strError = pwalletMain->SendMoneyToDestination(address.Get(), nAmount, wtx);
+    string strError = pwalletMain->SendMoneyToDestination(address.Get(), nAmount, wtx, bMixCoins);
     if (strError != "")
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
 
@@ -670,11 +690,21 @@ Value sendmany(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 4)
         throw runtime_error(
-            "sendmany <fromaccount> {address:amount,...} [minconf=1] [comment]\n"
-            "amounts are double-precision floating point numbers"
+            "sendmany <fromaccount>[:mixed] {address:amount,...} [minconf=1] [comment]\n"
+            "amounts are double-precision floating point numbers\n"
+            "coins can be mixed by appending :mixed to the account name, which will conceal the address you sent them from"
             + HelpRequiringPassphrase());
 
     string strAccount = AccountFromValue(params[0]);
+    size_t iSeperator = strAccount.find_last_of(":");
+    bool bMixCoins = false;
+    if(iSeperator != std::string::npos)
+    {
+        string action = strAccount.substr(iSeperator+1);
+        strAccount = strAccount.substr(0, iSeperator);
+        bMixCoins = boost::iequals(action, "mixed");
+    }
+
     Object sendTo = params[1].get_obj();
     int nMinDepth = 1;
     if (params.size() > 2)
@@ -718,7 +748,7 @@ Value sendmany(const Array& params, bool fHelp)
     CReserveKey keyChange(pwalletMain);
     int64 nFeeRequired = 0;
     string strFailReason;
-    bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, strFailReason);
+    bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, strFailReason, bMixCoins);
     if (!fCreated)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, strFailReason);
     if (!pwalletMain->CommitTransaction(wtx, keyChange))

@@ -39,7 +39,7 @@
      </property>
      <layout class="QVBoxLayout" name="verticalLayoutCoinControl2">
       <property name="spacing">
-       <number>-1</number>
+       <number>7</number>
       </property>
       <property name="leftMargin">
        <number>0</number>
@@ -625,8 +625,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>830</width>
-        <height>165</height>
+        <width>826</width>
+        <height>143</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -741,6 +741,16 @@
         </size>
        </property>
       </spacer>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="checkBoxMixCoins">
+       <property name="toolTip">
+        <string>Anonymizes coins by using mixer nodes to conceal the origin. A 2% fee is added to pay the mixing nodes.</string>
+       </property>
+       <property name="text">
+        <string>Anonymize coins</string>
+       </property>
+      </widget>
      </item>
      <item>
       <widget class="QPushButton" name="sendButton">

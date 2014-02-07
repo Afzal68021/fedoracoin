@@ -11,9 +11,9 @@ BitcoinUnits::BitcoinUnits(QObject *parent):
 QList<BitcoinUnits::Unit> BitcoinUnits::availableUnits()
 {
     QList<BitcoinUnits::Unit> unitlist;
-    unitlist.append(BTC);
-    unitlist.append(mBTC);
-    unitlist.append(uBTC);
+    unitlist.append(TIPS);
+    unitlist.append(Thousands);
+    unitlist.append(Millions);
     return unitlist;
 }
 
@@ -21,9 +21,9 @@ bool BitcoinUnits::valid(int unit)
 {
     switch(unit)
     {
-    case BTC:
-    case mBTC:
-    case uBTC:
+    case TIPS:
+    case Thousands:
+    case Millions:
         return true;
     default:
         return false;
@@ -34,10 +34,10 @@ QString BitcoinUnits::name(int unit)
 {
     switch(unit)
     {
-    case BTC: return QString("TIPS");
-    case mBTC: return QString("miniTIPS");
-    case uBTC: return QString::fromUtf8("tinyTIPS");
-    default: return QString("???");
+    case TIPS: return QString(" TIPS");
+    case Thousands: return QString("k TIPS");
+    case Millions: return QString::fromUtf8("M TIPS");
+    default: return QString(" ???");
     }
 }
 
@@ -45,9 +45,9 @@ QString BitcoinUnits::description(int unit)
 {
     switch(unit)
     {
-    case BTC: return QString("FedoraCoins");
-    case mBTC: return QString("miniFedoras (1 / 1,000)");
-    case uBTC: return QString("tinyFedoras (1 / 1,000,000)");
+    case TIPS: return QString("FedoraCoins");
+    case Thousands: return QString("thousand FedoraCoins");
+    case Millions: return QString::fromUtf8("million FedoraCoins");
     default: return QString("???");
     }
 }
@@ -56,9 +56,9 @@ qint64 BitcoinUnits::factor(int unit)
 {
     switch(unit)
     {
-    case BTC:  return 100000000;
-    case mBTC: return 100000;
-    case uBTC: return 100;
+    case TIPS:  return 100000000;
+    case Thousands: return 100000000000;
+    case Millions: return 100000000000000;
     default:   return 100000000;
     }
 }
@@ -67,9 +67,9 @@ int BitcoinUnits::amountDigits(int unit)
 {
     switch(unit)
     {
-    case BTC: return 8; // 21,000,000 (# digits, without commas)
-    case mBTC: return 11; // 21,000,000,000
-    case uBTC: return 14; // 21,000,000,000,000
+    case TIPS: return 12; // 500,000,000,000 (# digits, without commas)
+    case Thousands: return 9; // 500,000,000
+    case Millions: return 6; // 500,000
     default: return 0;
     }
 }
@@ -78,9 +78,9 @@ int BitcoinUnits::decimals(int unit)
 {
     switch(unit)
     {
-    case BTC: return 8;
-    case mBTC: return 5;
-    case uBTC: return 2;
+    case TIPS: return 8;
+    case Thousands: return 8;
+    case Millions: return 8;
     default: return 0;
     }
 }
@@ -114,7 +114,7 @@ QString BitcoinUnits::format(int unit, qint64 n, bool fPlus)
 
 QString BitcoinUnits::formatWithUnit(int unit, qint64 amount, bool plussign)
 {
-    return format(unit, amount, plussign) + QString(" ") + name(unit);
+    return format(unit, amount, plussign) + name(unit);
 }
 
 bool BitcoinUnits::parse(int unit, const QString &value, qint64 *val_out)

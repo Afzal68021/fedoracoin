@@ -290,6 +290,19 @@ inline int64 abs64(int64 n)
     return (n >= 0 ? n : -n);
 }
 
+inline std::string char2hex(unsigned char *bytes, int n)
+{
+    char lookup[] = "0123456789abcdef";
+    std::string s = "";
+
+    for( int i = 0; i < n; i++ ) {
+            s += lookup[ bytes[ i ] >> 4 ];
+            s += lookup[ bytes[ i ] & 0x0f ];
+    }
+
+    return s;
+}
+
 template<typename T>
 std::string HexStr(const T itbegin, const T itend, bool fSpaces=false)
 {

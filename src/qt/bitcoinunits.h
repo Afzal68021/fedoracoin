@@ -19,9 +19,9 @@ public:
      */
     enum Unit
     {
-        BTC,
-        mBTC,
-        uBTC
+        TIPS,
+        Thousands,
+        Millions
     };
 
     //! @name Static API

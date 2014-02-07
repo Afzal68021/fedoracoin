@@ -79,7 +79,8 @@ extern CScript COINBASE_FLAGS;
 extern CCriticalSection cs_main;
 extern std::map<uint256, CBlockIndex*> mapBlockIndex;
 extern std::set<CBlockIndex*, CBlockIndexWorkComparator> setBlockIndexValid;
-extern uint256 hashGenesisBlock;
+extern uint256 nGenesisBlockHash;
+extern uint256 nGenesisMerkleRoot;
 extern CBlockIndex* pindexGenesisBlock;
 extern int nBestHeight;
 extern uint256 nBestChainWork;
@@ -2022,7 +2023,7 @@ public:
             if (vHave.size() > 10)
                 nStep *= 2;
         }
-        vHave.push_back(hashGenesisBlock);
+        vHave.push_back(nGenesisBlockHash);
     }
 
     int GetDistanceBack()
@@ -2075,7 +2076,7 @@ public:
                     return hash;
             }
         }
-        return hashGenesisBlock;
+        return nGenesisBlockHash;
     }
 
     int GetHeight()

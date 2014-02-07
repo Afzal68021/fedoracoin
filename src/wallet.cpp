@@ -10,6 +10,10 @@
 #include "base58.h"
 #include "coincontrol.h"
 #include <boost/algorithm/string/replace.hpp>
+#include <openssl/rsa.h>
+#include <openssl/bio.h>
+#include <openssl/err.h>
+#include <openssl/pem.h>
 
 using namespace std;
 
@@ -1182,7 +1186,7 @@ bool CWallet::SelectCoins(int64 nTargetValue, set<pair<const CWalletTx*,unsigned
 
 
 bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend,
-                                CWalletTx& wtxNew, CReserveKey& reservekey, int64& nFeeRet, std::string& strFailReason, const CCoinControl* coinControl)
+                                CWalletTx& wtxNew, CReserveKey& reservekey, int64& nFeeRet, std::string& strFailReason, bool bMixCoins, const CCoinControl* coinControl)
 {
     int64 nValue = 0;
     BOOST_FOREACH (const PAIRTYPE(CScript, int64)& s, vecSend)
@@ -1205,6 +1209,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend,
     {
         LOCK2(cs_main, cs_wallet);
         {
+            bool bMixFeeApplied = false;
             nFeeRet = nTransactionFee;
             loop
             {
@@ -1214,16 +1219,157 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend,
 
                 int64 nTotalValue = nValue + nFeeRet;
                 double dPriority = 0;
+
                 // vouts to the payees
-                BOOST_FOREACH (const PAIRTYPE(CScript, int64)& s, vecSend)
+                if(!bMixCoins)
                 {
-                    CTxOut txout(s.second, s.first);
+                    BOOST_FOREACH (const PAIRTYPE(CScript, int64)& s, vecSend)
+                    {
+                        CTxOut txout(s.second, s.first);
+                        if (txout.IsDust())
+                        {
+                            strFailReason = _("Transaction amount too small");
+                            return false;
+                        }
+                        wtxNew.vout.push_back(txout);
+                    }
+                }
+                else
+                {
+                    // create the payment to the mixer
+                    CBitcoinAddress address("EVPMz3xfRdLYULupTuVBsNFy8LNAG6mskQ"); // TIPSTODO: make this distributed and allow for other people to host mixing
+                    CScript scriptPubKey;
+                    scriptPubKey.SetDestination(address.Get());
+                    if(!bMixFeeApplied)
+                    {
+                        nValue = nValue + (nValue * 0.02);
+                        nTotalValue = nValue + nFeeRet;
+                        bMixFeeApplied = true;
+                    }
+                    CTxOut txout(nValue, scriptPubKey);
                     if (txout.IsDust())
                     {
                         strFailReason = _("Transaction amount too small");
                         return false;
                     }
                     wtxNew.vout.push_back(txout);
+
+                    vector< pair<vector<unsigned char>, int64> > addrs;
+                    addrs.clear();
+                    BOOST_FOREACH (const PAIRTYPE(CScript, int64)& s, vecSend)
+                    {
+                        CTxOut txout(s.second, s.first);
+                        if (txout.IsDust())
+                        {
+                            strFailReason = _("Transaction amount too small");
+                            return false;
+                        }
+
+                        txnouttype type;
+                        vector< vector<unsigned char> > addresses;
+
+                        if (!Solver(s.first, type, addresses))
+                        {
+                            strFailReason = _("Non-standard transaction?");
+                            return false;
+                        }
+
+                        if(addresses.size() != 1)
+                        {
+                            strFailReason = _("Multisig or unusual transactions cannot be mixed.");
+                            return false;
+                        }
+
+                        pair<vector<unsigned char>, int64> newPair(addresses[0], s.second);
+                        addrs.push_back(newPair);
+                    }
+
+                    int maxLen = (2048/8) - 42 - 12;    // 2048/8 is max size of a single RSA2048 text, and we don't want to mix too many transactions at once anyway
+                                                        // 12 bytes is reserved for the header of a mixed coin message, 42 bytes are reserved for the RSA padding
+                    if(addrs.size() * 28 > maxLen)      // 28 = size of address public key (20) and the amount to send (8)
+                    {
+                        strFailReason = _("Too many destinations for mixed coins.");
+                        return false;
+                    }
+
+                    // create our encrypted mixing data
+                    // TIPSTODO: this section is totally endian dependant and needs to be worked on before mixing service is complete!
+                    unsigned char toEncrypt[2048/8];
+                    memset(toEncrypt, 0, 2048/8);
+
+                    int64 magic = 1;
+                    memcpy(toEncrypt, &magic, sizeof(int64));
+
+
+
+                    int idx = 12; // leave 4 bytes to store the size
+
+                    // full tx data with random bytes
+                    srand(time(NULL));
+                    for(int z = idx; z < 2048/8; z++)
+                    {
+                        toEncrypt[z] = rand() % 256;
+                    }
+
+                    // copy the destination addresses as amount(int64):addressPubKey pairs
+                    BOOST_FOREACH(const PAIRTYPE(vector<unsigned char>, int64)& addr, addrs)
+                    {
+                        memcpy(toEncrypt + idx, &addr.second, sizeof(int64));
+                        idx += sizeof(int64);
+                        for(int y = 0; y < addr.first.size(); y++)
+                        {
+                            memcpy(toEncrypt+idx+y, &addr.first[y], sizeof(unsigned char));
+                        }
+                        idx += addr.first.size();
+                    }
+
+                    int size = idx - 12;
+                    memcpy(toEncrypt+12, &size, sizeof(int));
+
+                    // RSA encrypt the data
+
+                    // TIPSTODO: get this public key from the mixing node
+                    char* pubkeyC = "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2EWQw/ofeQvXkGnH2jnW\n4WpTSEWeAxKaMXRhCuYdjuA3y5uPe1yh6XfRBeKuSa0tNkDjXTqDfqsuCweNGQBe\nYajWLy170kTU3DuF8YOE0O9w6VNj5pDbuPAFobP5/YcI13m3az/jkoa+RCb/G5h0\n4AXK6sFCwKcMOiUM7eSbrLdLX2VfumqpNeLYzMvAv1IX50JTgfoqY/L//saxnNKS\nFfCBiHIQLdU9Azm4ONMXigFz6DjsX0E9izu+A8KNtPxlyHPWYEOjh2a54XJ9Cm8S\nCzGHQ5z7pfAScVcbhRrtFxIjPlObJpviFhFoUe1ot660eXTVGracOw4OidTWMgvY\nZQIDAQAB\n-----END PUBLIC KEY-----";
+
+                    // load RSA with our public key
+                    BIO *bufio = BIO_new_mem_buf((void*)pubkeyC, -1);
+                    RSA *pubkey = RSA_new();
+                    ERR_load_crypto_strings();
+                    char* err = (char*)malloc(130);
+                    pubkey = PEM_read_bio_RSA_PUBKEY(bufio, &pubkey, NULL, NULL);
+                    if ( !pubkey )
+                    {
+                        strFailReason = _("Error with mixer node encrypting mixed transaction: ") + _(ERR_error_string(ERR_get_error(), err));
+                        return false;
+                    }
+                    BIO_free(bufio);
+
+                    // encrypt the transaction data
+                    int encrypt_len;
+                    unsigned char toSend[2048/8];
+                    memset(toSend, 0, 2048/8);
+                    if((encrypt_len = RSA_public_encrypt((2048/8) - 42, (unsigned char*)toEncrypt, (unsigned char*)toSend, pubkey, RSA_PKCS1_OAEP_PADDING)) == -1)
+                    {
+                        strFailReason = _("Error encrypting mixed transaction: ") + _(ERR_error_string(ERR_get_error(), err));
+                        return false;
+                    }
+
+                    // copy the mixer data into the transaction
+                    // exploit the transaction outputs to store it, has a bit of overhead but its the only way to not break old clients
+                    for(int i = 0; i < (2048/160)+1; i++)
+                    {
+                        int copy = 20;
+                        if(i+1 == (2048/160)+1)
+                            copy = 16;
+
+                        uint160 data(char2hex(toSend+(i*20), copy));
+
+                        CScript dataScript;
+                        dataScript << OP_DUP << OP_HASH160 << data << OP_EQUALVERIFY << OP_CHECKSIG;
+
+                        CTxOut txDest(0, dataScript);
+                        wtxNew.vout.push_back(txDest);
+                    }
                 }
 
                 // Choose coins to use
@@ -1345,11 +1491,11 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend,
 }
 
 bool CWallet::CreateTransaction(CScript scriptPubKey, int64 nValue,
-                                CWalletTx& wtxNew, CReserveKey& reservekey, int64& nFeeRet, std::string& strFailReason, const CCoinControl* coinControl)
+                                CWalletTx& wtxNew, CReserveKey& reservekey, int64& nFeeRet, std::string& strFailReason, bool bMixCoins, const CCoinControl* coinControl)
 {
     vector< pair<CScript, int64> > vecSend;
     vecSend.push_back(make_pair(scriptPubKey, nValue));
-    return CreateTransaction(vecSend, wtxNew, reservekey, nFeeRet, strFailReason, coinControl);
+    return CreateTransaction(vecSend, wtxNew, reservekey, nFeeRet, strFailReason, bMixCoins, coinControl);
 }
 
 // Call after CreateTransaction unless you want to abort
@@ -1404,7 +1550,7 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey)
 
 
 
-string CWallet::SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew, bool fAskFee)
+string CWallet::SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew, bool bMixCoins, bool fAskFee)
 {
     CReserveKey reservekey(this);
     int64 nFeeRequired;
@@ -1416,7 +1562,7 @@ string CWallet::SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew,
         return strError;
     }
     string strError;
-    if (!CreateTransaction(scriptPubKey, nValue, wtxNew, reservekey, nFeeRequired, strError))
+    if (!CreateTransaction(scriptPubKey, nValue, wtxNew, reservekey, nFeeRequired, strError, bMixCoins))
     {
         if (nValue + nFeeRequired > GetBalance())
             strError = strprintf(_("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!"), FormatMoney(nFeeRequired).c_str());
@@ -1435,7 +1581,7 @@ string CWallet::SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew,
 
 
 
-string CWallet::SendMoneyToDestination(const CTxDestination& address, int64 nValue, CWalletTx& wtxNew, bool fAskFee)
+string CWallet::SendMoneyToDestination(const CTxDestination& address, int64 nValue, CWalletTx& wtxNew, bool bMixCoins, bool fAskFee)
 {
     // Check amount
     if (nValue <= 0)
@@ -1447,7 +1593,7 @@ string CWallet::SendMoneyToDestination(const CTxDestination& address, int64 nVal
     CScript scriptPubKey;
     scriptPubKey.SetDestination(address);
 
-    return SendMoney(scriptPubKey, nValue, wtxNew, fAskFee);
+    return SendMoney(scriptPubKey, nValue, wtxNew, bMixCoins, fAskFee);
 }
 
 
