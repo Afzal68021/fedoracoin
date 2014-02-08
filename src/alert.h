@@ -25,19 +25,19 @@ class CUnsignedAlert
 public:
     int nVersion;
     int64 nRelayUntil;      // when newer nodes stop relaying to newer nodes
-    int64 nExpiration;
-    int nID;
-    int nCancel;
-    std::set<int> setCancel;
+    int64 nExpiration;      // when the alert is no longer in effect
+    int nID;                // unique id for the alert
+    int nCancel;            // cancel alerts up to this id
+    std::set<int> setCancel;// cancel alerts inside here
     int nMinVer;            // lowest version inclusive
     int nMaxVer;            // highest version inclusive
     std::set<std::string> setSubVer;  // empty matches all
-    int nPriority;
+    int nPriority;          // 2000 = lowest so far
 
     // Actions
-    std::string strComment;
-    std::string strStatusBar;
-    std::string strReserved;
+    std::string strComment; // unused?
+    std::string strStatusBar;// shown in status bar
+    std::string strReserved;// unused:
 
     IMPLEMENT_SERIALIZE
     (

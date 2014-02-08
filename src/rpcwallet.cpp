@@ -60,6 +60,24 @@ string AccountFromValue(const Value& value)
         throw JSONRPCError(RPC_WALLET_INVALID_ACCOUNT_NAME, "Invalid account name");
     return strAccount;
 }
+Value generatekey(const Array& params, string username, bool fHelp)
+{
+    if (fHelp || params.size() != 0)
+        throw runtime_error(
+            "generatekey"
+            "Generates a public/private keypair to use for signing.");
+
+    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+
+    CKey key;
+    key.MakeNewKey(false);
+    std::stringstream ss;
+    CPrivKey priv = key.GetPrivKey();
+    CPubKey pub = key.GetPubKey();
+    ss << "Public key: " << HexStr(pub) << "\n";
+    ss << "Private key: " << HexStr(priv) << "\n";
+    return ss.str();
+}
 
 Value getinfo(const Array& params, string username, bool fHelp)
 {
@@ -90,6 +108,9 @@ Value getinfo(const Array& params, string username, bool fHelp)
         obj.push_back(Pair("connections",   (int)vNodes.size()));
         obj.push_back(Pair("proxy",         (proxy.first.IsValid() ? proxy.first.ToStringIPPort() : string())));
         obj.push_back(Pair("errors",        GetWarnings("statusbar")));
+        string rootuser;
+        if(pusers->RootAccountGet(rootuser))
+            obj.push_back(Pair("rootuser", rootuser));
     }
     obj.push_back(Pair("difficulty",    (double)GetDifficulty()));
     obj.push_back(Pair("testnet",       fTestNet));

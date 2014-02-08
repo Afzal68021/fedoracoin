@@ -96,9 +96,9 @@ OverviewPage::OverviewPage(QWidget *parent) :
     ui(new Ui::OverviewPage),
     clientModel(0),
     walletModel(0),
-    currentBalance(-1),
-    currentUnconfirmedBalance(-1),
-    currentImmatureBalance(-1),
+    currentBalance(0xFFFFFFFFFFFFFFFF),
+    currentUnconfirmedBalance(0xFFFFFFFFFFFFFFFF),
+    currentImmatureBalance(0xFFFFFFFFFFFFFFFF),
     txdelegate(new TxViewDelegate()),
     filter(0)
 {
@@ -190,7 +190,7 @@ void OverviewPage::updateDisplayUnit()
 {
     if(walletModel && walletModel->getOptionsModel())
     {
-        if(currentBalance != -1)
+        if(currentBalance != 0xFFFFFFFFFFFFFFFF)
             setBalance(currentBalance, currentUnconfirmedBalance, currentImmatureBalance);
 
         // Update txdelegate->unit with the current unit

@@ -5,16 +5,16 @@ SetCompressor /SOLID lzma
 
 # General Symbol Definitions
 !define REGKEY "SOFTWARE\$(^Name)"
-!define VERSION 0.8.6.2
+!define VERSION 0.6.0.0
 !define COMPANY "FedoraCoin project"
-!define URL http://www.fedoracoin.org/
+!define URL http://www.fedoracoin.net/
 
 # MUI Symbol Definitions
-!define MUI_ICON "../share/pixmaps/bitcoin.ico"
-!define MUI_WELCOMEFINISHPAGE_BITMAP "../share/pixmaps/nsis-wizard.bmp"
+!define MUI_ICON "..\share\pixmaps\bitcoin.ico"
+!define MUI_WELCOMEFINISHPAGE_BITMAP "..\share\pixmaps\nsis-wizard.bmp"
 !define MUI_HEADERIMAGE
 !define MUI_HEADERIMAGE_RIGHT
-!define MUI_HEADERIMAGE_BITMAP "../share/pixmaps/nsis-header.bmp"
+!define MUI_HEADERIMAGE_BITMAP "..\share\pixmaps\nsis-header.bmp"
 !define MUI_FINISHPAGE_NOAUTOCLOSE
 !define MUI_STARTMENUPAGE_REGISTRY_ROOT HKLM
 !define MUI_STARTMENUPAGE_REGISTRY_KEY ${REGKEY}
@@ -22,7 +22,7 @@ SetCompressor /SOLID lzma
 !define MUI_STARTMENUPAGE_DEFAULTFOLDER FedoraCoin
 !define MUI_FINISHPAGE_RUN $INSTDIR\fedoracoin-qt.exe
 !define MUI_UNICON "${NSISDIR}\Contrib\Graphics\Icons\modern-uninstall.ico"
-!define MUI_UNWELCOMEFINISHPAGE_BITMAP "../share/pixmaps/nsis-wizard.bmp"
+!define MUI_UNWELCOMEFINISHPAGE_BITMAP "..\share\pixmaps\nsis-wizard.bmp"
 !define MUI_UNFINISHPAGE_NOAUTOCLOSE
 
 # Included files
@@ -45,13 +45,13 @@ Var StartMenuGroup
 !insertmacro MUI_LANGUAGE English
 
 # Installer attributes
-OutFile fedoracoin-0.8.6.2-win32-setup.exe
+OutFile fedoracoin-0.60-win32-setup.exe
 InstallDir $PROGRAMFILES\FedoraCoin
 CRCCheck on
 XPStyle on
 BrandingText " "
 ShowInstDetails show
-VIProductVersion 0.8.6.2
+VIProductVersion 0.6.0.0
 VIAddVersionKey ProductName FedoraCoin
 VIAddVersionKey ProductVersion "${VERSION}"
 VIAddVersionKey CompanyName "${COMPANY}"
@@ -66,13 +66,19 @@ ShowUninstDetails show
 Section -Main SEC0000
     SetOutPath $INSTDIR
     SetOverwrite on
-    File ../release/fedoracoin-qt.exe
-    File /oname=COPYING.txt ../COPYING
-    File /oname=readme.txt ../doc/README_windows.txt
-    SetOutPath $INSTDIR\daemon
-    File ../src/fedoracoind.exe
+    File ..\release\fedoracoin-qt.exe
+    File ..\release\libeay32.dll
+    File ..\release\libgcc_s_dw2-1.dll
+    File ..\release\libstdc++-6.dll
+    File ..\release\libwinpthread-1.dll
+    File ..\release\QtCore4.dll
+    File ..\release\QtGui4.dll
+    File ..\release\QtNetwork4.dll
+    File /oname=COPYING.txt ..\COPYING
+    File /oname=readme.txt ..\doc\README_windows.txt
+    File ..\src\fedoracoind.exe
     SetOutPath $INSTDIR\src
-    File /r /x *.exe /x *.o ../src\*.*
+    File /r /x *.exe /x *.o ..\src\*.*
     SetOutPath $INSTDIR
     WriteRegStr HKCU "${REGKEY}\Components" Main 1
 
@@ -120,16 +126,22 @@ done${UNSECTION_ID}:
 # Uninstaller sections
 Section /o -un.Main UNSEC0000
     Delete /REBOOTOK $INSTDIR\fedoracoin-qt.exe
+    Delete /REBOOTOK $INSTDIR\fedoracoind.exe    
+    Delete /REBOOTOK $INSTDIR\libeay32.dll
+    Delete /REBOOTOK $INSTDIR\libgcc_s_dw2-1.dll
+    Delete /REBOOTOK $INSTDIR\libstdc++-6.dll
+    Delete /REBOOTOK $INSTDIR\libwinpthread-1.dll
+    Delete /REBOOTOK $INSTDIR\QtCore4.dll
+    Delete /REBOOTOK $INSTDIR\QtGui4.dll
+    Delete /REBOOTOK $INSTDIR\QtNetwork4.dll
     Delete /REBOOTOK $INSTDIR\COPYING.txt
     Delete /REBOOTOK $INSTDIR\readme.txt
-    RMDir /r /REBOOTOK $INSTDIR\daemon
     RMDir /r /REBOOTOK $INSTDIR\src
     DeleteRegValue HKCU "${REGKEY}\Components" Main
 SectionEnd
 
 Section -un.post UNSEC0001
     DeleteRegKey HKCU "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\$(^Name)"
-    Delete /REBOOTOK "$SMPROGRAMS\$StartMenuGroup\Uninstall FedoraCoin.lnk"
     Delete /REBOOTOK "$SMPROGRAMS\$StartMenuGroup\FedoraCoin.lnk"
     Delete /REBOOTOK "$SMSTARTUP\FedoraCoin.lnk"
     Delete /REBOOTOK $INSTDIR\uninstall.exe

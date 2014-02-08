@@ -30,7 +30,12 @@ bool CUserDB::UserExists(string username)
 bool CUserDB::RootAccountExists()
 {
     std::string owner;
-    return Read(string("ROOT"), owner) && !owner.empty();
+    if(Read(string("ROOT"), owner) && !owner.empty())
+    {
+        this->root = owner;
+        return true;
+    }
+    return false;
 }
 
 bool CUserDB::RootAccountSet(string username)

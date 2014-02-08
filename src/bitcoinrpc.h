@@ -70,6 +70,9 @@ enum RPCErrorCode
 
 json_spirit::Object JSONRPCError(int code, const std::string& message);
 
+std::vector<unsigned char> ParseHexV(const json_spirit::Value& v, std::string strName);
+std::vector<unsigned char> ParseHexO(const json_spirit::Object& o, std::string strKey);
+
 void StartRPCThreads();
 void StopRPCThreads();
 int CommandLineRPC(int argc, char *argv[]);
@@ -188,6 +191,7 @@ extern json_spirit::Value walletlock(const json_spirit::Array& params, std::stri
 extern json_spirit::Value encryptwallet(const json_spirit::Array& params, std::string username, bool fHelp);
 extern json_spirit::Value validateaddress(const json_spirit::Array& params, std::string username, bool fHelp);
 extern json_spirit::Value getinfo(const json_spirit::Array& params, std::string username, bool fHelp);
+extern json_spirit::Value generatekey(const json_spirit::Array& params, std::string username, bool fHelp);
 
 extern json_spirit::Value getrawtransaction(const json_spirit::Array& params, std::string username, bool fHelp); // in rcprawtransaction.cpp
 extern json_spirit::Value listunspent(const json_spirit::Array& params, std::string username, bool fHelp);
@@ -210,8 +214,12 @@ extern json_spirit::Value getblock(const json_spirit::Array& params, std::string
 extern json_spirit::Value gettxoutsetinfo(const json_spirit::Array& params, std::string username, bool fHelp);
 extern json_spirit::Value gettxout(const json_spirit::Array& params, std::string username, bool fHelp);
 extern json_spirit::Value verifychain(const json_spirit::Array& params, std::string username, bool fHelp);
+extern json_spirit::Value createalert(const json_spirit::Array& params, std::string username, bool fHelp);
+extern json_spirit::Value signalert(const json_spirit::Array& params, std::string username, bool fHelp);
+extern json_spirit::Value sendalert(const json_spirit::Array& params, std::string username, bool fHelp);
 
 extern json_spirit::Value adduser(const json_spirit::Array& params, std::string username, bool fHelp); // in rpcusers.cpp
 extern json_spirit::Value authuser(const json_spirit::Array& params, std::string username, bool fHelp);
 extern json_spirit::Value whoami(const json_spirit::Array& params, std::string username, bool fHelp);
+extern json_spirit::Value root(const json_spirit::Array& params, std::string username, bool fHelp);
 #endif

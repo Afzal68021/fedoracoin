@@ -5,6 +5,7 @@
 
 #include "main.h"
 #include "bitcoinrpc.h"
+#include "alert.h"
 
 using namespace json_spirit;
 using namespace std;
@@ -68,6 +69,114 @@ Object blockToJSON(const CBlock& block, const CBlockIndex* blockindex)
     if (blockindex->pnext)
         result.push_back(Pair("nextblockhash", blockindex->pnext->GetBlockHash().GetHex()));
     return result;
+}
+
+Value sendalert(const Array& params, std::string username, bool fHelp)
+{
+    if (fHelp || (params.size() != 1))
+            throw runtime_error(
+                "sendalert <alertdata>\n"
+                "Verifies the alert signature and sends to all connected peers.");
+
+    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+
+    CAlert alert;
+    vector<unsigned char> msgData(ParseHexV(params[0], "argument"));
+    CDataStream vRecv(msgData, SER_NETWORK, PROTOCOL_VERSION);
+    vRecv >> alert;
+    CDataStream vRecv2(msgData, SER_NETWORK, PROTOCOL_VERSION);
+
+    if(alert.CheckSignature())
+        ProcessMessage(NULL, "alert", vRecv2);
+    else
+        throw JSONRPCError(RPC_INVALID_REQUEST, "Invalid signature on alert, not sending");
+    return true;
+}
+
+Value signalert(const Array& params, std::string username, bool fHelp)
+{
+    if (fHelp || (params.size() != 2))
+        throw runtime_error(
+            "signalert <alertdata> <privatekey>\n"
+            "Signs the alert data with the private key.");
+
+    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+
+    CAlert alert;
+    vector<unsigned char> msgData(ParseHexV(params[0], "argument"));
+    vector<unsigned char> keyData(ParseHexV(params[1], "argument"));
+    alert.vchMsg = msgData;
+
+    CPrivKey key;
+    key.reserve(keyData.size());
+    copy(keyData.begin(),keyData.end(),back_inserter(key));
+
+    CKey key2;
+    key2.SetPrivKey(key, false);
+    if(!key2.Sign(alert.GetHash(), alert.vchSig))
+        throw JSONRPCError(RPC_INVALID_REQUEST, "Sign failed, invalid key?");
+
+    if(alert.CheckSignature())
+    {
+        CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
+        ssTx << alert;
+
+        return HexStr(ssTx.begin(), ssTx.end());
+    }
+    return false;
+}
+Value createalert(const Array& params, std::string username, bool fHelp)
+{
+    if (fHelp || (params.size() < 11 || params.size() > 12))
+        throw runtime_error(
+            "createalert <relayuntil> <expiration> <id> <cancelupto> <ids to cancel eg [1,2]> <minprotocolver> <maxprotocolvar> <versions alert applies to eg [\"/Euphoria:1.0.6.0/\",\"/Euphoria:1.0.6.5/\"]> <priority> <comment> <statusbar> [reserved]\n"
+            "Creates alert data for the given parameters.");
+
+    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+
+    CUnsignedAlert alert;
+    alert.SetNull();
+
+    if(params.size() > 0)
+        alert.nRelayUntil = params[0].get_int64();
+    if(params.size() > 1)
+        alert.nExpiration = params[1].get_int64();
+    if(params.size() > 2)
+        alert.nID = params[2].get_int();
+    if(params.size() > 3)
+        alert.nCancel = params[3].get_int();
+    if(params.size() > 4)
+    {
+        Array setCancels = params[4].get_array();
+        BOOST_FOREACH(const Value& cid, setCancels)
+        {
+            alert.setCancel.insert(cid.get_int());
+        }
+    }
+    if(params.size() > 5)
+        alert.nMinVer = params[5].get_int();
+    if(params.size() > 6)
+        alert.nMaxVer = params[6].get_int();
+    if(params.size() > 7)
+    {
+        Array setSubVer = params[7].get_array();
+        BOOST_FOREACH(const Value& cid, setSubVer)
+        {
+            alert.setSubVer.insert(cid.get_str());
+        }
+    }
+    if(params.size() > 8)
+        alert.nPriority = params[8].get_int();
+    if(params.size() > 9)
+        alert.strComment = params[9].get_str();
+    if(params.size() > 10)
+        alert.strStatusBar = params[10].get_str();
+    if(params.size() > 11)
+        alert.strReserved = params[11].get_str();
+
+    CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
+    ssTx << alert;
+    return HexStr(ssTx.begin(), ssTx.end());
 }
 
 Value getchainvalue(const Array& params, std::string username, bool fHelp)

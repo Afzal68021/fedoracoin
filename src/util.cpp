@@ -446,7 +446,7 @@ bool ParseMoney(const char* pszIn, int64& nRet)
             return false;
     if (strWhole.size() > 10) // guard against 63 bit overflow
         return false;
-    if (nUnits < 0 || nUnits > COIN)
+    if (nUnits < 0 || nUnits > (int64)COIN)
         return false;
     int64 nWhole = atoi64(strWhole);
     int64 nValue = nWhole*COIN + nUnits;

@@ -140,7 +140,7 @@ private:
     quint64 cachedBalance;
     quint64 cachedUnconfirmedBalance;
     quint64 cachedImmatureBalance;
-    quint64 cachedNumTransactions;
+    int cachedNumTransactions;
     EncryptionStatus cachedEncryptionStatus;
     int cachedNumBlocks;
 

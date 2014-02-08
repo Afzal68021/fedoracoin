@@ -53,3 +53,17 @@ Value whoami(const Array& params, std::string username, bool fHelp)
 
     return username;
 }
+
+Value root(const Array& params, std::string username, bool fHelp)
+{
+    if (fHelp || params.size() != 0)
+        throw runtime_error(
+            "root"
+            "prints the root username");
+
+    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+
+    string user;
+    pusers->RootAccountGet(user);
+    return user;
+}

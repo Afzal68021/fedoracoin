@@ -562,8 +562,6 @@ bool CTransaction::CheckTransaction(CValidationState &state) const
     uint64 nValueOut = 0;
     BOOST_FOREACH(const CTxOut& txout, vout)
     {
-        if (txout.nValue < 0)
-            return state.DoS(100, error("CTransaction::CheckTransaction() : txout.nValue negative"));
         if (txout.nValue > MAX_TX_OUTPUT_VALUE)
             return state.DoS(100, error("CTransaction::CheckTransaction() : txout.nValue too high"));
         nValueOut += txout.nValue;
@@ -582,7 +580,6 @@ bool CTransaction::CheckTransaction(CValidationState &state) const
 
     if (IsCoinBase())
     {
-        int size = vin[0].scriptSig.size();
         if (vin[0].scriptSig.size() < 2 || vin[0].scriptSig.size() > 200)
             return state.DoS(100, error("CTransaction::CheckTransaction() : coinbase script size"));
     }
@@ -1201,8 +1198,6 @@ unsigned int ComputeMinWork(unsigned int nBase, int64 nTime)
 
 unsigned int static GetNextWorkRequired_V1(const CBlockIndex* pindexLast, const CBlockHeader *pblock)
 {
-	int nHeight = pindexLast->nHeight + 1;
-    
 	int64 nActualTimespanMax = nTargetTimespan * (112/100); //12% down
 	int64 nActualTimespanMin = nTargetTimespan * (100/111); //10% up	
 
@@ -1363,7 +1358,6 @@ unsigned int static KimotoGravityWell(const CBlockIndex* pindexLast, const CBloc
     /* current difficulty formula, Anoncoin - kimoto gravity well */
     const CBlockIndex *BlockLastSolved = pindexLast;
     const CBlockIndex *BlockReading = pindexLast;
-    const CBlockHeader *BlockCreating = pblock;
 
     uint64 PastBlocksMass = 0;
     int64 PastRateActualSeconds = 0;
@@ -1707,8 +1701,6 @@ bool CTransaction::CheckInputs(CValidationState &state, CCoinsViewCache &inputs,
 
         // Tally transaction fees
         uint64 nTxFee = nValueIn - GetValueOut();
-        if (nTxFee < 0)
-            return state.DoS(100, error("CheckInputs() : %s nTxFee < 0", GetHash().ToString().c_str()));
         nFees += nTxFee;
         if (!MoneyRange(nFees))
             return state.DoS(100, error("CheckInputs() : nFees out of range"));
@@ -3511,7 +3503,7 @@ void static ProcessGetData(CNode* pfrom)
     }
 }
 
-bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
+bool ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
 {
     RandAddSeedPerfmon();
     if (fDebug)
@@ -3521,10 +3513,6 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
         printf("dropmessagestest DROPPING RECV MESSAGE\n");
         return true;
     }
-
-
-
-
 
     if (strCommand == "version")
     {
@@ -3629,7 +3617,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
     }
 
 
-    else if (pfrom->nVersion == 0)
+    else if (pfrom && pfrom->nVersion == 0)
     {
         // Must have a version message before anything else
         pfrom->Misbehaving(1);
@@ -4009,12 +3997,14 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
         vRecv >> alert;
 
         uint256 alertHash = alert.GetHash();
-        if (pfrom->setKnown.count(alertHash) == 0)
+        if (!pfrom || pfrom->setKnown.count(alertHash) == 0)
         {
             if (alert.ProcessAlert())
             {
                 // Relay
-                pfrom->setKnown.insert(alertHash);
+                if(pfrom)
+                    pfrom->setKnown.insert(alertHash);
+
                 {
                     LOCK(cs_vNodes);
                     BOOST_FOREACH(CNode* pnode, vNodes)
@@ -4028,7 +4018,8 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
                 // This isn't a Misbehaving(100) (immediate ban) because the
                 // peer might be an older or different implementation with
                 // a different signature key, etc.
-                pfrom->Misbehaving(10);
+                if(pfrom)
+                    pfrom->Misbehaving(10);
             }
         }
     }
@@ -4099,7 +4090,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
 
 
     // Update the last seen time for this node's address
-    if (pfrom->fNetworkNode)
+    if (pfrom && pfrom->fNetworkNode)
         if (strCommand == "version" || strCommand == "addr" || strCommand == "inv" || strCommand == "getdata" || strCommand == "ping")
             AddressCurrentlyConnected(pfrom->addr);
 
