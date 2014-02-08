@@ -36,7 +36,7 @@ WalletModel::~WalletModel()
     unsubscribeFromCoreSignals();
 }
 
-qint64 WalletModel::getBalance(const CCoinControl *coinControl) const
+quint64 WalletModel::getBalance(const CCoinControl *coinControl) const
 {
     if (coinControl)
     {
@@ -52,12 +52,12 @@ qint64 WalletModel::getBalance(const CCoinControl *coinControl) const
     return wallet->GetBalance();
 }
 
-qint64 WalletModel::getUnconfirmedBalance() const
+quint64 WalletModel::getUnconfirmedBalance() const
 {
     return wallet->GetUnconfirmedBalance();
 }
 
-qint64 WalletModel::getImmatureBalance() const
+quint64 WalletModel::getImmatureBalance() const
 {
     return wallet->GetImmatureBalance();
 }
@@ -94,9 +94,9 @@ void WalletModel::pollBalanceChanged()
 
 void WalletModel::checkBalanceChanged()
 {
-    qint64 newBalance = getBalance();
-    qint64 newUnconfirmedBalance = getUnconfirmedBalance();
-    qint64 newImmatureBalance = getImmatureBalance();
+    quint64 newBalance = getBalance();
+    quint64 newUnconfirmedBalance = getUnconfirmedBalance();
+    quint64 newImmatureBalance = getImmatureBalance();
 
     if(cachedBalance != newBalance || cachedUnconfirmedBalance != newUnconfirmedBalance || cachedImmatureBalance != newImmatureBalance)
     {
@@ -137,7 +137,7 @@ bool WalletModel::validateAddress(const QString &address)
 
 WalletModel::SendCoinsReturn WalletModel::sendCoins(const QList<SendCoinsRecipient> &recipients, bool bMixCoins, const CCoinControl *coinControl)
 {
-    qint64 total = 0;
+    quint64 total = 0;
     QSet<QString> setAddress;
     QString hex;
 

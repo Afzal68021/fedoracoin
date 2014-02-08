@@ -6,7 +6,7 @@
 #include "bitcoinrpc.h"
 #include "ui_interface.h"
 #include "base58.h"
-
+#include "userdb.h"
 #include <boost/lexical_cast.hpp>
 
 #define printf OutputDebugStringF
@@ -32,17 +32,30 @@ public:
     }
 };
 
-Value importprivkey(const Array& params, bool fHelp)
+Value importprivkey(const Array& params, std::string username, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 3)
         throw runtime_error(
-            "importprivkey <fedoracoinprivkey> [label] [rescan=true]\n"
+            "importprivkey <fedoracoinprivkey> [account] [rescan=true]\n"
             "Adds a private key (as returned by dumpprivkey) to your wallet.");
 
     string strSecret = params[0].get_str();
-    string strLabel = "";
+    string strAccount = "";
     if (params.size() > 1)
-        strLabel = params[1].get_str();
+        strAccount = params[1].get_str();
+
+    if (!strAccount.empty() && username != "root")
+    {
+        if(!pusers->UserOwnsAccount(username, strAccount))
+        {
+            string temp;
+            if(!pusers->UserAccountAdd(username, strAccount, temp))
+                return false;
+            strAccount = temp;
+        }
+    }
+    else if (username != "root")
+        pusers->UserAccountDefault(username, strAccount);
 
     // Whether to perform rescan after import
     bool fRescan = true;
@@ -61,7 +74,7 @@ Value importprivkey(const Array& params, bool fHelp)
         LOCK2(cs_main, pwalletMain->cs_wallet);
 
         pwalletMain->MarkDirty();
-        pwalletMain->SetAddressBookName(vchAddress, strLabel);
+        pwalletMain->SetAddressBookName(vchAddress, strAccount);
 
         if (!pwalletMain->AddKeyPubKey(key, pubkey))
             throw JSONRPCError(RPC_WALLET_ERROR, "Error adding key to wallet");
@@ -75,7 +88,7 @@ Value importprivkey(const Array& params, bool fHelp)
     return Value::null;
 }
 
-Value dumpprivkey(const Array& params, bool fHelp)
+Value dumpprivkey(const Array& params, std::string username, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
@@ -89,8 +102,15 @@ Value dumpprivkey(const Array& params, bool fHelp)
     CKeyID keyID;
     if (!address.GetKeyID(keyID))
         throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to a key");
+
+    map<CTxDestination, string>::iterator mi = pwalletMain->mapAddressBook.find(address.Get());
+    if (username != "root" && (mi == pwalletMain->mapAddressBook.end() || (*mi).second.empty() || !pusers->UserOwnsAccount(username, (*mi).second)))
+        throw JSONRPCError(RPC_WALLET_ERROR, "Private key for address " + strAddress + " is not known");
+
     CKey vchSecret;
     if (!pwalletMain->GetKey(keyID, vchSecret))
         throw JSONRPCError(RPC_WALLET_ERROR, "Private key for address " + strAddress + " is not known");
+
+
     return CBitcoinSecret(vchSecret).ToString();
 }

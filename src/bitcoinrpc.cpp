@@ -10,6 +10,7 @@
 #include "base58.h"
 #include "bitcoinrpc.h"
 #include "db.h"
+#include "userdb.h"
 
 #include <boost/asio.hpp>
 #include <boost/asio/ip/v6_only.hpp>
@@ -90,17 +91,21 @@ void RPCTypeCheck(const Object& o,
     }
 }
 
-uint64 AmountFromValue(const Value& value)
+int64 AmountFromValue(const Value& value)
 {
     double dAmount = value.get_real();
     if (dAmount <= 0.0 || dAmount > (double)(MAX_COINS / COIN))
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount");
-    uint64 nAmount = rounduint64(dAmount * COIN);
+    int64 nAmount = roundint64(dAmount * COIN);
     if (!MoneyRange(nAmount))
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount");
     return nAmount;
 }
 
+Value ValueFromAmount(int64 amount)
+{
+    return (double)amount / (double)COIN;
+}
 Value ValueFromAmount(uint64 amount)
 {
     return (double)amount / (double)COIN;
@@ -122,7 +127,7 @@ std::string HexBits(unsigned int nBits)
 /// Note: This interface may still be subject to change.
 ///
 
-string CRPCTable::help(string strCommand) const
+string CRPCTable::help(string strCommand, string username) const
 {
     string strRet;
     set<rpcfn_type> setDone;
@@ -137,13 +142,15 @@ string CRPCTable::help(string strCommand) const
             continue;
         if (pcmd->reqWallet && !pwalletMain)
             continue;
+        if (pcmd->adminsOnly && username != "root")
+            continue;
 
         try
         {
             Array params;
             rpcfn_type pfn = pcmd->actor;
             if (setDone.insert(pfn).second)
-                (*pfn)(params, true);
+                (*pfn)(params, username, true);
         }
         catch (std::exception& e)
         {
@@ -161,7 +168,7 @@ string CRPCTable::help(string strCommand) const
     return strRet;
 }
 
-Value help(const Array& params, bool fHelp)
+Value help(const Array& params, std::string username, bool fHelp)
 {
     if (fHelp || params.size() > 1)
         throw runtime_error(
@@ -172,17 +179,20 @@ Value help(const Array& params, bool fHelp)
     if (params.size() > 0)
         strCommand = params[0].get_str();
 
-    return tableRPC.help(strCommand);
+    return tableRPC.help(strCommand, username);
 }
 
 
-Value stop(const Array& params, bool fHelp)
+Value stop(const Array& params, std::string username, bool fHelp)
 {
     // Accept the deprecated and ignored 'detach' boolean argument
     if (fHelp || params.size() > 1)
         throw runtime_error(
             "stop\n"
             "Stop FedoraCoin server.");
+
+    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+
     // Shutdown will take long enough that the response should get back
     StartShutdown();
     return "FedoraCoin server stopping";
@@ -196,76 +206,79 @@ Value stop(const Array& params, bool fHelp)
 
 
 static const CRPCCommand vRPCCommands[] =
-{ //  name                      actor (function)         okSafeMode threadSafe reqWallet
-  //  ------------------------  -----------------------  ---------- ---------- ---------
-    { "help",                   &help,                   true,      true,       false },
-    { "stop",                   &stop,                   true,      true,       false },
-    { "getblockcount",          &getblockcount,          true,      false,      false },
-    { "getchainvalue",          &getchainvalue,          true,      false,      false },
-    { "getbestblockhash",       &getbestblockhash,       true,      false,      false },
-    { "getconnectioncount",     &getconnectioncount,     true,      false,      false },
-    { "getpeerinfo",            &getpeerinfo,            true,      false,      false },
-    { "addnode",                &addnode,                true,      true,       false },
-    { "getaddednodeinfo",       &getaddednodeinfo,       true,      true,       false },
-    { "getdifficulty",          &getdifficulty,          true,      false,      false },
-    { "getnetworkhashps",       &getnetworkhashps,       true,      false,      false },
-    { "getgenerate",            &getgenerate,            true,      false,      false },
-    { "setgenerate",            &setgenerate,            true,      false,      true },
-    { "gethashespersec",        &gethashespersec,        true,      false,      false },
-    { "getinfo",                &getinfo,                true,      false,      false },
-    { "getmininginfo",          &getmininginfo,          true,      false,      false },
-    { "getnewaddress",          &getnewaddress,          true,      false,      true },
-    { "getaccountaddress",      &getaccountaddress,      true,      false,      true },
-    { "setaccount",             &setaccount,             true,      false,      true },
-    { "getaccount",             &getaccount,             false,     false,      true },
-    { "getaddressesbyaccount",  &getaddressesbyaccount,  true,      false,      true },
-    { "sendtoaddress",          &sendtoaddress,          false,     false,      true },
-    { "getreceivedbyaddress",   &getreceivedbyaddress,   false,     false,      true },
-    { "getreceivedbyaccount",   &getreceivedbyaccount,   false,     false,      true },
-    { "listreceivedbyaddress",  &listreceivedbyaddress,  false,     false,      true },
-    { "listreceivedbyaccount",  &listreceivedbyaccount,  false,     false,      true },
-    { "backupwallet",           &backupwallet,           true,      false,      true },
-    { "keypoolrefill",          &keypoolrefill,          true,      false,      true },
-    { "walletpassphrase",       &walletpassphrase,       true,      false,      true },
-    { "walletpassphrasechange", &walletpassphrasechange, false,     false,      true },
-    { "walletlock",             &walletlock,             true,      false,      true },
-    { "encryptwallet",          &encryptwallet,          false,     false,      true },
-    { "validateaddress",        &validateaddress,        true,      false,      false },
-    { "getbalance",             &getbalance,             false,     false,      true },
-    { "move",                   &movecmd,                false,     false,      true },
-    { "sendfrom",               &sendfrom,               false,     false,      true },
-    { "sendmany",               &sendmany,               false,     false,      true },
-    { "addmultisigaddress",     &addmultisigaddress,     false,     false,      true },
-    { "createmultisig",         &createmultisig,         true,      true ,      false },
-    { "getrawmempool",          &getrawmempool,          true,      false,      false },
-    { "getblock",               &getblock,               false,     false,      false },
-    { "getblockhash",           &getblockhash,           false,     false,      false },
-    { "gettransaction",         &gettransaction,         false,     false,      true },
-    { "listtransactions",       &listtransactions,       false,     false,      true },
-    { "listaddressgroupings",   &listaddressgroupings,   false,     false,      true },
-    { "signmessage",            &signmessage,            false,     false,      true },
-    { "verifymessage",          &verifymessage,          false,     false,      false },
-    { "getwork",                &getwork,                true,      false,      true },
-    { "getworkex",              &getworkex,              true,      false,      true },
-    { "listaccounts",           &listaccounts,           false,     false,      true },
-    { "settxfee",               &settxfee,               false,     false,      true },
-    { "getblocktemplate",       &getblocktemplate,       true,      false,      false },
-    { "submitblock",            &submitblock,            false,     false,      false },
-    { "setmininput",            &setmininput,            false,     false,      false },
-    { "listsinceblock",         &listsinceblock,         false,     false,      true },
-    { "dumpprivkey",            &dumpprivkey,            true,      false,      true },
-    { "importprivkey",          &importprivkey,          false,     false,      true },
-    { "listunspent",            &listunspent,            false,     false,      true },
-    { "getrawtransaction",      &getrawtransaction,      false,     false,      false },
-    { "createrawtransaction",   &createrawtransaction,   false,     false,      false },
-    { "decoderawtransaction",   &decoderawtransaction,   false,     false,      false },
-    { "signrawtransaction",     &signrawtransaction,     false,     false,      false },
-    { "sendrawtransaction",     &sendrawtransaction,     false,     false,      false },
-    { "gettxoutsetinfo",        &gettxoutsetinfo,        true,      false,      false },
-    { "gettxout",               &gettxout,               true,      false,      false },
-    { "lockunspent",            &lockunspent,            false,     false,      true },
-    { "listlockunspent",        &listlockunspent,        false,     false,      true },
-    { "verifychain",            &verifychain,            true,      false,      false },
+{ //  name                      actor (function)         okSafeMode threadSafe reqWallet adminsOnly
+  //  ------------------------  -----------------------  ---------- ---------- --------- ----------
+    { "help",                   &help,                   true,      true,      false,    false},
+    { "stop",                   &stop,                   true,      true,      false,    true },
+    { "getblockcount",          &getblockcount,          true,      false,     false,    false },
+    { "getchainvalue",          &getchainvalue,          true,      false,     false,    false },
+    { "getbestblockhash",       &getbestblockhash,       true,      false,     false,    false },
+    { "getconnectioncount",     &getconnectioncount,     true,      false,     false,    true },
+    { "getpeerinfo",            &getpeerinfo,            true,      false,     false,    true },
+    { "addnode",                &addnode,                true,      true,      false,    true },
+    { "getaddednodeinfo",       &getaddednodeinfo,       true,      true,      false,    true },
+    { "getdifficulty",          &getdifficulty,          true,      false,     false,    false },
+    { "getnetworkhashps",       &getnetworkhashps,       true,      false,     false,    false },
+    { "getgenerate",            &getgenerate,            true,      false,     false,    true },
+    { "setgenerate",            &setgenerate,            true,      false,     true,     true },
+    { "gethashespersec",        &gethashespersec,        true,      false,     false,    true },
+    { "getinfo",                &getinfo,                true,      false,     false,    false },
+    { "getmininginfo",          &getmininginfo,          true,      false,     false,    false },
+    { "getnewaddress",          &getnewaddress,          true,      false,     true,     false },
+    { "getaccountaddress",      &getaccountaddress,      true,      false,     true,     false },
+    { "setaccount",             &setaccount,             true,      false,     true,     false },
+    { "getaccount",             &getaccount,             false,     false,     true,     false },
+    { "getaddressesbyaccount",  &getaddressesbyaccount,  true,      false,     true,     false },
+    { "sendtoaddress",          &sendtoaddress,          false,     false,     true,     false },
+    { "getreceivedbyaddress",   &getreceivedbyaddress,   false,     false,     true,     false },
+    { "getreceivedbyaccount",   &getreceivedbyaccount,   false,     false,     true,     false },
+    { "listreceivedbyaddress",  &listreceivedbyaddress,  false,     false,     true,     false },
+    { "listreceivedbyaccount",  &listreceivedbyaccount,  false,     false,     true,     false },
+    { "backupwallet",           &backupwallet,           true,      false,     true,     true },
+    { "keypoolrefill",          &keypoolrefill,          true,      false,     true,     true },
+    { "walletpassphrase",       &walletpassphrase,       true,      false,     true,     true },
+    { "walletpassphrasechange", &walletpassphrasechange, false,     false,     true,     true },
+    { "walletlock",             &walletlock,             true,      false,     true,     true },
+    { "encryptwallet",          &encryptwallet,          false,     false,     true,     true },
+    { "validateaddress",        &validateaddress,        true,      false,     false,    false },
+    { "getbalance",             &getbalance,             false,     false,     true,     false },
+    { "move",                   &movecmd,                false,     false,     true,     false },
+    { "sendfrom",               &sendfrom,               false,     false,     true,     false },
+    { "sendmany",               &sendmany,               false,     false,     true,     false },
+    { "addmultisigaddress",     &addmultisigaddress,     false,     false,     true,     false },
+    { "createmultisig",         &createmultisig,         true,      true ,     false,    true },
+    { "getrawmempool",          &getrawmempool,          true,      false,     false,    true },
+    { "getblock",               &getblock,               false,     false,     false,    false },
+    { "getblockhash",           &getblockhash,           false,     false,     false,    false },
+    { "gettransaction",         &gettransaction,         false,     false,     true,     false },
+    { "listtransactions",       &listtransactions,       false,     false,     true,     false },
+    { "listaddressgroupings",   &listaddressgroupings,   false,     false,     true,     true },
+    { "signmessage",            &signmessage,            false,     false,     true,     false },
+    { "verifymessage",          &verifymessage,          false,     false,     false,    true },
+    { "getwork",                &getwork,                true,      false,     true,     false },
+    { "getworkex",              &getworkex,              true,      false,     true,     false },
+    { "listaccounts",           &listaccounts,           false,     false,     true,     false },
+    { "settxfee",               &settxfee,               false,     false,     true,     true },
+    { "getblocktemplate",       &getblocktemplate,       true,      false,     false,     false },
+    { "submitblock",            &submitblock,            false,     false,     false,     false },
+    { "setmininput",            &setmininput,            false,     false,     false,     true },
+    { "listsinceblock",         &listsinceblock,         false,     false,     true,      false },
+    { "dumpprivkey",            &dumpprivkey,            true,      false,     true,      false },
+    { "importprivkey",          &importprivkey,          false,     false,     true,      false },
+    { "listunspent",            &listunspent,            false,     false,     true,      true },
+    { "getrawtransaction",      &getrawtransaction,      false,     false,     false,     false },
+    { "createrawtransaction",   &createrawtransaction,   false,     false,     false,     false },
+    { "decoderawtransaction",   &decoderawtransaction,   false,     false,     false,     false },
+    { "signrawtransaction",     &signrawtransaction,     false,     false,     false,     true },
+    { "sendrawtransaction",     &sendrawtransaction,     false,     false,     false,     true },
+    { "gettxoutsetinfo",        &gettxoutsetinfo,        true,      false,     false,     true },
+    { "gettxout",               &gettxout,               true,      false,     false,     true },
+    { "lockunspent",            &lockunspent,            false,     false,     true,      true },
+    { "listlockunspent",        &listlockunspent,        false,     false,     true,      true },
+    { "verifychain",            &verifychain,            true,      false,     false,     true },
+    { "adduser",                &adduser,                true,      false,     false,     true },
+    { "authuser",               &authuser,               true,      false,     false,     true },
+    { "whoami",                 &whoami,                 true,      false,     false,     false },
 };
 
 CRPCTable::CRPCTable()
@@ -327,6 +340,19 @@ string rfc1123Time()
 
 static string HTTPReply(int nStatus, const string& strMsg, bool keepalive)
 {
+    if (nStatus == HTTP_JSON_OK)
+        return strprintf("HTTP/1.1 200 OK\r\n"
+                         "Date: %s\r\n"
+                         "Server: fedoracoin-json-rpc/%s\r\n"
+                         "Access-Control-Allow-Origin: *\r\n"
+                         "Access-Control-Allow-Methods: POST, GET, OPTIONS\r\n"
+                         "Access-Control-Max-Age: 1000\r\n"
+                         "Access-Control-Allow-Headers: authorization, origin, x-csrftoken, content-type, accept\r\n"
+                         "Content-Length: 0\r\n"
+                         "Connection: %s\r\n"
+                         "Content-Type: text/plain\r\n"
+                         "\r\n", rfc1123Time().c_str(), FormatFullVersion().c_str(), keepalive ? "keep-alive" : "close");
+
     if (nStatus == HTTP_UNAUTHORIZED)
         return strprintf("HTTP/1.0 401 Authorization Required\r\n"
             "Date: %s\r\n"
@@ -354,18 +380,22 @@ static string HTTPReply(int nStatus, const string& strMsg, bool keepalive)
     return strprintf(
             "HTTP/1.1 %d %s\r\n"
             "Date: %s\r\n"
+            "Access-Control-Allow-Origin: *\r\n"
+            "Access-Control-Allow-Methods: POST, GET, OPTIONS\r\n"
+            "Access-Control-Max-Age: 1000\r\n"
+            "Access-Control-Allow-Headers: authorization, origin, x-csrftoken, content-type, accept\r\n"
+            "Server: fedoracoin-json-rpc/%s\r\n"
             "Connection: %s\r\n"
             "Content-Length: %"PRIszu"\r\n"
             "Content-Type: application/json\r\n"
-            "Server: fedoracoin-json-rpc/%s\r\n"
             "\r\n"
             "%s",
         nStatus,
         cStatus,
         rfc1123Time().c_str(),
+        FormatFullVersion().c_str(),
         keepalive ? "keep-alive" : "close",
         strMsg.size(),
-        FormatFullVersion().c_str(),
         strMsg.c_str());
 }
 
@@ -383,7 +413,7 @@ bool ReadHTTPRequestLine(std::basic_istream<char>& stream, int &proto,
 
     // HTTP methods permitted: GET, POST
     http_method = vWords[0];
-    if (http_method != "GET" && http_method != "POST")
+    if (http_method != "GET" && http_method != "POST" && http_method != "OPTIONS")
         return false;
 
     // HTTP URI must be an absolute path, relative to current host
@@ -477,14 +507,24 @@ int ReadHTTPMessage(std::basic_istream<char>& stream, map<string,
     return HTTP_OK;
 }
 
-bool HTTPAuthorized(map<string, string>& mapHeaders)
+string HTTPAuthorized(map<string, string>& mapHeaders)
 {
     string strAuth = mapHeaders["authorization"];
     if (strAuth.substr(0,6) != "Basic ")
-        return false;
+        return "false";
     string strUserPass64 = strAuth.substr(6); boost::trim(strUserPass64);
     string strUserPass = DecodeBase64(strUserPass64);
-    return TimingResistantEqual(strUserPass, strRPCUserColonPass);
+    int idx = strUserPass.find_first_of(":");
+    if(idx > -1)
+    {
+        string user = strUserPass.substr(0, idx);
+        string pass = strUserPass.substr(idx+1, strUserPass.size());
+        if(TimingResistantEqual(strUserPass, strRPCUserColonPass))
+            return user;
+        if(pusers->UserAuth(user, pass))
+            return user;
+    }
+    return "false";
 }
 
 //
@@ -900,7 +940,7 @@ void JSONRequest::parse(const Value& valRequest)
         throw JSONRPCError(RPC_INVALID_REQUEST, "Params must be an array");
 }
 
-static Object JSONRPCExecOne(const Value& req)
+static Object JSONRPCExecOne(const Value& req, string username)
 {
     Object rpc_result;
 
@@ -908,7 +948,7 @@ static Object JSONRPCExecOne(const Value& req)
     try {
         jreq.parse(req);
 
-        Value result = tableRPC.execute(jreq.strMethod, jreq.params);
+        Value result = tableRPC.execute(jreq.strMethod, jreq.params, username);
         rpc_result = JSONRPCReplyObj(result, Value::null, jreq.id);
     }
     catch (Object& objError)
@@ -924,11 +964,11 @@ static Object JSONRPCExecOne(const Value& req)
     return rpc_result;
 }
 
-static string JSONRPCExecBatch(const Array& vReq)
+static string JSONRPCExecBatch(const Array& vReq, string username)
 {
     Array ret;
     for (unsigned int reqIdx = 0; reqIdx < vReq.size(); reqIdx++)
-        ret.push_back(JSONRPCExecOne(vReq[reqIdx]));
+        ret.push_back(JSONRPCExecOne(vReq[reqIdx], username));
 
     return write_string(Value(ret), false) + "\n";
 }
@@ -946,6 +986,12 @@ void ServiceConnection(AcceptedConnection *conn)
         if (!ReadHTTPRequestLine(conn->stream(), nProto, strMethod, strURI))
             break;
 
+        if(strMethod == "OPTIONS")
+        {
+           conn->stream() << HTTPReply(HTTP_JSON_OK, "", false) << std::flush;
+           break;
+
+        }
         // Read HTTP message headers and body
         ReadHTTPMessage(conn->stream(), mapHeaders, strRequest, nProto);
 
@@ -960,7 +1006,8 @@ void ServiceConnection(AcceptedConnection *conn)
             conn->stream() << HTTPReply(HTTP_UNAUTHORIZED, "", false) << std::flush;
             break;
         }
-        if (!HTTPAuthorized(mapHeaders))
+        string user = HTTPAuthorized(mapHeaders);
+        if (user == "false") // not authorized
         {
             printf("ThreadRPCServer incorrect password attempt from %s\n", conn->peer_address_to_string().c_str());
             /* Deter brute-forcing short passwords.
@@ -972,6 +1019,9 @@ void ServiceConnection(AcceptedConnection *conn)
             conn->stream() << HTTPReply(HTTP_UNAUTHORIZED, "", false) << std::flush;
             break;
         }
+        if(user == mapArgs["-rpcuser"])
+            user = "root";
+
         if (mapHeaders["connection"] == "close")
             fRun = false;
 
@@ -989,14 +1039,14 @@ void ServiceConnection(AcceptedConnection *conn)
             if (valRequest.type() == obj_type) {
                 jreq.parse(valRequest);
 
-                Value result = tableRPC.execute(jreq.strMethod, jreq.params);
+                Value result = tableRPC.execute(jreq.strMethod, jreq.params, user);
 
                 // Send reply
                 strReply = JSONRPCReply(result, Value::null, jreq.id);
 
             // array of requests
             } else if (valRequest.type() == array_type)
-                strReply = JSONRPCExecBatch(valRequest.get_array());
+                strReply = JSONRPCExecBatch(valRequest.get_array(), user);
             else
                 throw JSONRPCError(RPC_PARSE_ERROR, "Top-level object parse error");
 
@@ -1015,12 +1065,14 @@ void ServiceConnection(AcceptedConnection *conn)
     }
 }
 
-json_spirit::Value CRPCTable::execute(const std::string &strMethod, const json_spirit::Array &params) const
+json_spirit::Value CRPCTable::execute(const std::string &strMethod, const json_spirit::Array &params, string username) const
 {
     // Find method
     const CRPCCommand *pcmd = tableRPC[strMethod];
     if (!pcmd)
         throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found");
+    if (username != "root" && pcmd->adminsOnly)
+        throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
     if (pcmd->reqWallet && !pwalletMain)
         throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (disabled)");
 
@@ -1036,13 +1088,13 @@ json_spirit::Value CRPCTable::execute(const std::string &strMethod, const json_s
         Value result;
         {
             if (pcmd->threadSafe)
-                result = pcmd->actor(params, false);
+                result = pcmd->actor(params, username, false);
             else if (!pwalletMain) {
                 LOCK(cs_main);
-                result = pcmd->actor(params, false);
+                result = pcmd->actor(params, username, false);
             } else {
                 LOCK2(cs_main, pwalletMain->cs_wallet);
-                result = pcmd->actor(params, false);
+                result = pcmd->actor(params, username, false);
             }
         }
         return result;

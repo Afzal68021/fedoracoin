@@ -9,6 +9,7 @@
 #include "ui_interface.h"
 #include "base58.h"
 #include "coincontrol.h"
+#include "userdb.h"
 #include <boost/algorithm/string/replace.hpp>
 #include <openssl/rsa.h>
 #include <openssl/bio.h>
@@ -1191,17 +1192,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, uint64> >& vecSend,
     uint64 nValue = 0;
     BOOST_FOREACH (const PAIRTYPE(CScript, uint64)& s, vecSend)
     {
-        if (nValue < 0)
-        {
-            strFailReason = _("Transaction amounts must be positive");
-            return false;
-        }
         nValue += s.second;
-    }
-    if (vecSend.empty() || nValue < 0)
-    {
-        strFailReason = _("Transaction amounts must be positive");
-        return false;
     }
 
     wtxNew.BindWallet(this);
@@ -1284,7 +1275,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, uint64> >& vecSend,
                         addrs.push_back(newPair);
                     }
 
-                    int maxLen = (2048/8) - 42 - 12;    // 2048/8 is max size of a single RSA2048 text, and we don't want to mix too many transactions at once anyway
+                    size_t maxLen = (2048/8) - 42 - 12;    // 2048/8 is max size of a single RSA2048 text, and we don't want to mix too many transactions at once anyway
                                                         // 12 bytes is reserved for the header of a mixed coin message, 42 bytes are reserved for the RSA padding
                     if(addrs.size() * 28 > maxLen)      // 28 = size of address public key (20) and the amount to send (8)
                     {
@@ -1316,7 +1307,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, uint64> >& vecSend,
                     {
                         memcpy(toEncrypt + idx, &addr.second, sizeof(uint64));
                         idx += sizeof(uint64);
-                        for(int y = 0; y < addr.first.size(); y++)
+                        for(size_t y = 0; y < addr.first.size(); y++)
                         {
                             memcpy(toEncrypt+idx+y, &addr.first[y], sizeof(unsigned char));
                         }
@@ -1329,7 +1320,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, uint64> >& vecSend,
                     // RSA encrypt the data
 
                     // TIPSTODO: get this public key from the mixing node
-                    char* pubkeyC = "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2EWQw/ofeQvXkGnH2jnW\n4WpTSEWeAxKaMXRhCuYdjuA3y5uPe1yh6XfRBeKuSa0tNkDjXTqDfqsuCweNGQBe\nYajWLy170kTU3DuF8YOE0O9w6VNj5pDbuPAFobP5/YcI13m3az/jkoa+RCb/G5h0\n4AXK6sFCwKcMOiUM7eSbrLdLX2VfumqpNeLYzMvAv1IX50JTgfoqY/L//saxnNKS\nFfCBiHIQLdU9Azm4ONMXigFz6DjsX0E9izu+A8KNtPxlyHPWYEOjh2a54XJ9Cm8S\nCzGHQ5z7pfAScVcbhRrtFxIjPlObJpviFhFoUe1ot660eXTVGracOw4OidTWMgvY\nZQIDAQAB\n-----END PUBLIC KEY-----";
+                    const char* pubkeyC = "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2EWQw/ofeQvXkGnH2jnW\n4WpTSEWeAxKaMXRhCuYdjuA3y5uPe1yh6XfRBeKuSa0tNkDjXTqDfqsuCweNGQBe\nYajWLy170kTU3DuF8YOE0O9w6VNj5pDbuPAFobP5/YcI13m3az/jkoa+RCb/G5h0\n4AXK6sFCwKcMOiUM7eSbrLdLX2VfumqpNeLYzMvAv1IX50JTgfoqY/L//saxnNKS\nFfCBiHIQLdU9Azm4ONMXigFz6DjsX0E9izu+A8KNtPxlyHPWYEOjh2a54XJ9Cm8S\nCzGHQ5z7pfAScVcbhRrtFxIjPlObJpviFhFoUe1ot660eXTVGracOw4OidTWMgvY\nZQIDAQAB\n-----END PUBLIC KEY-----";
 
                     // load RSA with our public key
                     BIO *bufio = BIO_new_mem_buf((void*)pubkeyC, -1);
@@ -1579,14 +1570,56 @@ string CWallet::SendMoney(CScript scriptPubKey, uint64 nValue, CWalletTx& wtxNew
     return "";
 }
 
+int64 CWallet::GetAccountBalance(CWalletDB& walletdb, const string& strAccount, int nMinDepth)
+{
+    uint64 nBalance = 0;
 
+    // Tally wallet transactions
+    for (map<uint256, CWalletTx>::iterator it = this->mapWallet.begin(); it != this->mapWallet.end(); ++it)
+    {
+        const CWalletTx& wtx = (*it).second;
+        if (!wtx.IsFinal())
+            continue;
 
-string CWallet::SendMoneyToDestination(const CTxDestination& address, uint64 nValue, CWalletTx& wtxNew, bool bMixCoins, bool fAskFee)
+        uint64 nReceived, nSent, nFee;
+        wtx.GetAccountAmounts(strAccount, nReceived, nSent, nFee);
+
+        if (nReceived != 0 && wtx.GetDepthInMainChain() >= nMinDepth)
+            nBalance += nReceived;
+        nBalance -= nSent + nFee;
+    }
+
+    // Tally internal accounting entries
+    nBalance += walletdb.GetAccountCreditDebit(strAccount);
+
+    return nBalance;
+}
+
+int64 CWallet::GetAccountBalance(const string& strAccount, int nMinDepth)
+{
+    CWalletDB walletdb(this->strWalletFile);
+    return GetAccountBalance(walletdb, strAccount, nMinDepth);
+}
+
+string CWallet::SendMoneyToDestination(const CTxDestination& address, std::string username, uint64 nValue, CWalletTx& wtxNew, bool bMixCoins, bool fAskFee)
 {
     // Check amount
     if (nValue <= 0)
         return _("Invalid amount");
-    if (nValue + nTransactionFee > GetBalance())
+
+    uint64 nBalance = GetBalance();
+    if (username != "root")
+    {
+        std::list<string> accts;
+        if(!pusers->UserAccountList(username, accts))
+            return _("No accounts on server");
+        nBalance = 0;
+        for(std::list<string>::iterator it = accts.begin(); it != accts.end(); ++it)
+        {
+            nBalance += GetAccountBalance(*it, 0);
+        }
+    }
+    if (nValue + nTransactionFee > nBalance)
         return _("Insufficient funds");
 
     // Parse Bitcoin address

@@ -88,7 +88,9 @@ OBJS= \
     obj/hash.o \
     obj/bloom.o \
     obj/leveldb.o \
-    obj/txdb.o
+    obj/txdb.o \
+    obj/userdb.o \
+    obj/rpcusers.o
 
 ifdef USE_SSE2
 DEFS += -DUSE_SSE2

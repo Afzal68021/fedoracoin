@@ -54,10 +54,10 @@ static const uint64 DUST_SOFT_LIMIT = 100000; // 0.001 TIPS
 /** Dust Hard Limit, ignored as wallet inputs (mininput default) */
 static const uint64 DUST_HARD_LIMIT = 1000;   // 0.00001 TIPS mininput
 /** No amount larger than this (in satoshi) is valid */
-static const uint64 MAX_TX_OUTPUT_VALUE = 2500000000 * COIN;
+static const uint64 MAX_TX_OUTPUT_VALUE = 2500000000u * COIN;
 inline bool MoneyRange(uint64 nValue) { return (nValue <= MAX_TX_OUTPUT_VALUE); }
 /** The max amount of coins we allow to be generated */
-static const uint64 MAX_COINS = 500000000000 * COIN;
+static const uint64 MAX_COINS = 500000000000u * COIN;
 /** Coinbase transaction outputs can only be spent after this number of new blocks (network rule) */
 static const int COINBASE_MATURITY = 30;
 /** Threshold for nLockTime: below this value it is interpreted as block number, otherwise as UNIX timestamp. */
@@ -117,6 +117,7 @@ static const uint64 nMinDiskSpace = 52428800;
 class CReserveKey;
 class CCoinsDB;
 class CBlockTreeDB;
+class CUserDB;
 struct CDiskBlockPos;
 class CCoins;
 class CTxUndo;
@@ -2244,7 +2245,7 @@ extern CCoinsViewCache *pcoinsTip;
 
 /** Global variable that points to the active block tree (protected by cs_main) */
 extern CBlockTreeDB *pblocktree;
-
+extern CUserDB *pusers;
 struct CBlockTemplate
 {
     CBlock block;

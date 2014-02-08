@@ -12,6 +12,7 @@
 #include "main.h"
 #include "net.h"
 #include "wallet.h"
+#include "userdb.h"
 
 using namespace std;
 using namespace boost;
@@ -132,7 +133,7 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, Object& entry)
     }
 }
 
-Value getrawtransaction(const Array& params, bool fHelp)
+Value getrawtransaction(const Array& params, std::string username, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
@@ -153,6 +154,33 @@ Value getrawtransaction(const Array& params, bool fHelp)
     if (!GetTransaction(hash, tx, hashBlock, true))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available about transaction");
 
+    if(username != "root")
+    {
+        const CWalletTx& wtx = pwalletMain->mapWallet[hash];
+        uint64 allFee;
+        string strSentAccount;
+        list<pair<CTxDestination, uint64> > listReceived;
+        list<pair<CTxDestination, uint64> > listSent;
+        wtx.GetAmounts(listReceived, listSent, allFee, strSentAccount);
+        if(!pusers->UserOwnsAccount(username, strSentAccount))
+        {
+            bool recv = false;
+            // Received
+            if (listReceived.size() > 0)
+            {
+                BOOST_FOREACH(const PAIRTYPE(CTxDestination, uint64)& r, listReceived)
+                {
+                    if (pwalletMain->mapAddressBook.count(r.first) && pusers->UserOwnsAccount(username, pwalletMain->mapAddressBook[r.first]))
+                    {
+                        recv = true;
+                        break;
+                    }
+                }
+            }
+            if(!recv)
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available about transaction");
+        }
+    }
     CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
     ssTx << tx;
     string strHex = HexStr(ssTx.begin(), ssTx.end());
@@ -166,7 +194,7 @@ Value getrawtransaction(const Array& params, bool fHelp)
     return result;
 }
 
-Value listunspent(const Array& params, bool fHelp)
+Value listunspent(const Array& params, std::string username, bool fHelp)
 {
     if (fHelp || params.size() > 3)
         throw runtime_error(
@@ -176,6 +204,8 @@ Value listunspent(const Array& params, bool fHelp)
             "Optionally filtered to only include txouts paid to specified addresses.\n"
             "Results are an array of Objects, each of which has:\n"
             "{txid, vout, scriptPubKey, amount, confirmations}");
+
+    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     RPCTypeCheck(params, list_of(int_type)(int_type)(array_type));
 
@@ -253,7 +283,7 @@ Value listunspent(const Array& params, bool fHelp)
     return results;
 }
 
-Value createrawtransaction(const Array& params, bool fHelp)
+Value createrawtransaction(const Array& params, std::string username, bool fHelp)
 {
     if (fHelp || params.size() != 2)
         throw runtime_error(
@@ -302,7 +332,7 @@ Value createrawtransaction(const Array& params, bool fHelp)
 
         CScript scriptPubKey;
         scriptPubKey.SetDestination(address.Get());
-        uint64 nAmount = AmountFromValue(s.value_);
+        int64 nAmount = AmountFromValue(s.value_);
 
         CTxOut out(nAmount, scriptPubKey);
         rawTx.vout.push_back(out);
@@ -313,7 +343,7 @@ Value createrawtransaction(const Array& params, bool fHelp)
     return HexStr(ss.begin(), ss.end());
 }
 
-Value decoderawtransaction(const Array& params, bool fHelp)
+Value decoderawtransaction(const Array& params, std::string username, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
@@ -336,7 +366,7 @@ Value decoderawtransaction(const Array& params, bool fHelp)
     return result;
 }
 
-Value signrawtransaction(const Array& params, bool fHelp)
+Value signrawtransaction(const Array& params, std::string username, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 4)
         throw runtime_error(
@@ -352,6 +382,8 @@ Value signrawtransaction(const Array& params, bool fHelp)
             "  hex : raw transaction with signature(s) (hex-encoded string)\n"
             "  complete : 1 if transaction has a complete set of signature (0 if not)"
             + HelpRequiringPassphrase());
+
+    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     RPCTypeCheck(params, list_of(str_type)(array_type)(array_type)(str_type), true);
 
@@ -527,12 +559,14 @@ Value signrawtransaction(const Array& params, bool fHelp)
     return result;
 }
 
-Value sendrawtransaction(const Array& params, bool fHelp)
+Value sendrawtransaction(const Array& params, std::string username, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 1)
         throw runtime_error(
             "sendrawtransaction <hex string>\n"
             "Submits raw transaction (serialized, hex-encoded) to local node and network.");
+
+    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     // parse hex string from parameter
     vector<unsigned char> txData(ParseHexV(params[0], "parameter"));

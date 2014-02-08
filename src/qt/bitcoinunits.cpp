@@ -56,10 +56,10 @@ qint64 BitcoinUnits::factor(int unit)
 {
     switch(unit)
     {
-    case TIPS:  return 100000000;
-    case Thousands: return 100000000000;
-    case Millions: return 100000000000000;
-    default:   return 100000000;
+    case TIPS:  return 100000000u;
+    case Thousands: return 100000000000u;
+    case Millions: return 100000000000000u;
+    default:   return 100000000u;
     }
 }
 
@@ -117,7 +117,7 @@ QString BitcoinUnits::formatWithUnit(int unit, qint64 amount, bool plussign)
     return format(unit, amount, plussign) + name(unit);
 }
 
-bool BitcoinUnits::parse(int unit, const QString &value, qint64 *val_out)
+bool BitcoinUnits::parse(int unit, const QString &value, quint64 *val_out)
 {
     if(!valid(unit) || value.isEmpty())
         return false; // Refuse to parse invalid unit or empty string

@@ -4,6 +4,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "txdb.h"
+#include "userdb.h"
 #include "walletdb.h"
 #include "bitcoinrpc.h"
 #include "net.h"
@@ -880,6 +881,7 @@ bool AppInit2(boost::thread_group& threadGroup)
                 delete pblocktree;
 
                 pblocktree = new CBlockTreeDB(nBlockTreeDBCache, false, fReindex);
+                pusers = new CUserDB(nCoinDBCache, false, fReindex);
                 pcoinsdbview = new CCoinsViewDB(nCoinDBCache, false, fReindex);
                 pcoinsTip = new CCoinsViewCache(*pcoinsdbview);
 

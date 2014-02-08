@@ -296,7 +296,7 @@ bool OptionsModel::setData(const QModelIndex & index, const QVariant & value, in
     return successful;
 }
 
-qint64 OptionsModel::getTransactionFee()
+quint64 OptionsModel::getTransactionFee()
 {
     return nTransactionFee;
 }

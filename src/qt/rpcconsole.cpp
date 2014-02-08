@@ -149,7 +149,7 @@ void RPCExecutor::request(const QString &command)
         // and pass it along with the method name to the dispatcher.
         json_spirit::Value result = tableRPC.execute(
             args[0],
-            RPCConvertValues(args[0], std::vector<std::string>(args.begin() + 1, args.end())));
+                RPCConvertValues(args[0], std::vector<std::string>(args.begin() + 1, args.end())), "root");
 
         // Format result reply
         if (result.type() == json_spirit::null_type)

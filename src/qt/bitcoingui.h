@@ -156,7 +156,7 @@ public slots:
       @param[in] nFeeRequired       the required fee
       @param[out] payFee            true to pay the fee, false to not pay the fee
     */
-    void askFee(qint64 nFeeRequired, bool *payFee);
+    void askFee(quint64 nFeeRequired, bool *payFee);
     void handleURI(QString strURI);
 
     /** Show incoming transaction notification for new transactions. */

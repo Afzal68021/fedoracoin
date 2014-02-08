@@ -7,6 +7,7 @@
 #include "checkpoints.h"
 #include "db.h"
 #include "txdb.h"
+#include "userdb.h"
 #include "net.h"
 #include "init.h"
 #include "ui_interface.h"
@@ -280,6 +281,7 @@ bool CCoinsViewMemPool::HaveCoins(const uint256 &txid) {
 
 CCoinsViewCache *pcoinsTip = NULL;
 CBlockTreeDB *pblocktree = NULL;
+CUserDB *pusers = NULL;
 
 //////////////////////////////////////////////////////////////////////////////
 //

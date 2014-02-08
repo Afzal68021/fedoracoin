@@ -106,7 +106,7 @@ public:
     int64 time;
     Type type;
     std::string address;
-    uint64 debit;
+    int64 debit;
     uint64 credit;
     /**@}*/
 

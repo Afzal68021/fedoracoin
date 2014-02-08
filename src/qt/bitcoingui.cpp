@@ -708,7 +708,7 @@ void BitcoinGUI::closeEvent(QCloseEvent *event)
     QMainWindow::closeEvent(event);
 }
 
-void BitcoinGUI::askFee(qint64 nFeeRequired, bool *payFee)
+void BitcoinGUI::askFee(quint64 nFeeRequired, bool *payFee)
 {
     QString strMessage = tr("This transaction is over the size limit. You can still send it for a fee of %1, "
         "which goes to the nodes that process your transaction and helps to support the network. "

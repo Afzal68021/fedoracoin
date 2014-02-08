@@ -30,7 +30,7 @@ bool TransactionFilterProxy::filterAcceptsRow(int sourceRow, const QModelIndex &
     QDateTime datetime = index.data(TransactionTableModel::DateRole).toDateTime();
     QString address = index.data(TransactionTableModel::AddressRole).toString();
     QString label = index.data(TransactionTableModel::LabelRole).toString();
-    qint64 amount = llabs(index.data(TransactionTableModel::AmountRole).toLongLong());
+    quint64 amount = llabs(index.data(TransactionTableModel::AmountRole).toLongLong());
 
     if(!(TYPE(type) & typeFilter))
         return false;
@@ -63,7 +63,7 @@ void TransactionFilterProxy::setTypeFilter(quint32 modes)
     invalidateFilter();
 }
 
-void TransactionFilterProxy::setMinAmount(qint64 minimum)
+void TransactionFilterProxy::setMinAmount(quint64 minimum)
 {
     this->minAmount = minimum;
     invalidateFilter();

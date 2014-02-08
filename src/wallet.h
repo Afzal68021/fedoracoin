@@ -185,8 +185,9 @@ public:
                            CWalletTx& wtxNew, CReserveKey& reservekey, uint64& nFeeRet, std::string& strFailReason, bool bMixCoins, const CCoinControl *coinControl=NULL);
     bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey);
     std::string SendMoney(CScript scriptPubKey, uint64 nValue, CWalletTx& wtxNew, bool bMixCoins, bool fAskFee=false);
-    std::string SendMoneyToDestination(const CTxDestination &address, uint64 nValue, CWalletTx& wtxNew, bool bMixCoins, bool fAskFee=false);
-
+    std::string SendMoneyToDestination(const CTxDestination &address, std::string username, uint64 nValue, CWalletTx& wtxNew, bool bMixCoins, bool fAskFee=false);
+    int64 GetAccountBalance(CWalletDB& walletdb, const std::string& strAccount, int nMinDepth);
+    int64 GetAccountBalance(const std::string& strAccount, int nMinDepth);
     bool NewKeyPool();
     bool TopUpKeyPool();
     int64 AddReserveKey(const CKeyPool& keypool);
@@ -787,7 +788,7 @@ class CAccountingEntry
 {
 public:
     std::string strAccount;
-    uint64 nCreditDebit;
+    int64 nCreditDebit;
     int64 nTime;
     std::string strOtherAccount;
     std::string strComment;

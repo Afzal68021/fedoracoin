@@ -81,7 +81,7 @@ static bool ThreadSafeAskFee(uint64 nFeeRequired)
     bool payFee = false;
 
     QMetaObject::invokeMethod(guiref, "askFee", GUIUtil::blockingGUIThreadConnection(),
-                               Q_ARG(qint64, nFeeRequired),
+                               Q_ARG(quint64, nFeeRequired),
                                Q_ARG(bool*, &payFee));
 
     return payFee;

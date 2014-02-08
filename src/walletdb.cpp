@@ -58,7 +58,7 @@ uint64 CWalletDB::GetAccountCreditDebit(const string& strAccount)
     list<CAccountingEntry> entries;
     ListAccountCreditDebit(strAccount, entries);
 
-    uint64 nCreditDebit = 0;
+    int64 nCreditDebit = 0;
     BOOST_FOREACH (const CAccountingEntry& entry, entries)
         nCreditDebit += entry.nCreditDebit;
 

@@ -70,11 +70,11 @@ Object blockToJSON(const CBlock& block, const CBlockIndex* blockindex)
     return result;
 }
 
-Value getchainvalue(const Array& params, bool fHelp)
+Value getchainvalue(const Array& params, std::string username, bool fHelp)
 {
     if (fHelp || (params.size() != 0 && params.size() != 1))
         throw runtime_error(
-            "getchainvalue <height>\n"
+            "getchainvalue [height]\n"
             "Returns the total amount of coins mined on the current chain up the to given height.");
 
     int nHeight = nBestHeight;
@@ -83,7 +83,7 @@ Value getchainvalue(const Array& params, bool fHelp)
 
     return ValueFromAmount(GetChainValue(nHeight));
 }
-Value getblockcount(const Array& params, bool fHelp)
+Value getblockcount(const Array& params, std::string username, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
@@ -93,7 +93,7 @@ Value getblockcount(const Array& params, bool fHelp)
     return nBestHeight;
 }
 
-Value getbestblockhash(const Array& params, bool fHelp)
+Value getbestblockhash(const Array& params, std::string username, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
@@ -103,7 +103,7 @@ Value getbestblockhash(const Array& params, bool fHelp)
     return hashBestChain.GetHex();
 }
 
-Value getdifficulty(const Array& params, bool fHelp)
+Value getdifficulty(const Array& params, std::string username, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
@@ -114,15 +114,17 @@ Value getdifficulty(const Array& params, bool fHelp)
 }
 
 
-Value settxfee(const Array& params, bool fHelp)
+Value settxfee(const Array& params, std::string username, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 1)
         throw runtime_error(
             "settxfee <amount>\n"
             "<amount> is a real and is rounded to the nearest 0.00000001");
 
+    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+
     // Amount
-    uint64 nAmount = 0;
+    int64 nAmount = 0;
     if (params[0].get_real() != 0.0)
         nAmount = AmountFromValue(params[0]);        // rejects 0.0 amounts
 
@@ -130,12 +132,14 @@ Value settxfee(const Array& params, bool fHelp)
     return true;
 }
 
-Value getrawmempool(const Array& params, bool fHelp)
+Value getrawmempool(const Array& params, std::string username, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
             "getrawmempool\n"
             "Returns all transaction ids in memory pool.");
+
+    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     vector<uint256> vtxid;
     mempool.queryHashes(vtxid);
@@ -147,7 +151,7 @@ Value getrawmempool(const Array& params, bool fHelp)
     return a;
 }
 
-Value getblockhash(const Array& params, bool fHelp)
+Value getblockhash(const Array& params, std::string username, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
@@ -162,7 +166,7 @@ Value getblockhash(const Array& params, bool fHelp)
     return pblockindex->phashBlock->GetHex();
 }
 
-Value getblock(const Array& params, bool fHelp)
+Value getblock(const Array& params, std::string username, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
@@ -196,12 +200,14 @@ Value getblock(const Array& params, bool fHelp)
     return blockToJSON(block, pblockindex);
 }
 
-Value gettxoutsetinfo(const Array& params, bool fHelp)
+Value gettxoutsetinfo(const Array& params, std::string username, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
             "gettxoutsetinfo\n"
             "Returns statistics about the unspent transaction output set.");
+
+    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     Object ret;
 
@@ -218,12 +224,14 @@ Value gettxoutsetinfo(const Array& params, bool fHelp)
     return ret;
 }
 
-Value gettxout(const Array& params, bool fHelp)
+Value gettxout(const Array& params, std::string username, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 3)
         throw runtime_error(
             "gettxout <txid> <n> [includemempool=true]\n"
             "Returns details about an unspent transaction output.");
+
+    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     Object ret;
 
@@ -263,12 +271,14 @@ Value gettxout(const Array& params, bool fHelp)
     return ret;
 }
 
-Value verifychain(const Array& params, bool fHelp)
+Value verifychain(const Array& params, std::string username, bool fHelp)
 {
     if (fHelp || params.size() > 2)
         throw runtime_error(
             "verifychain [check level] [num blocks]\n"
             "Verifies blockchain database.");
+
+    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     int nCheckLevel = GetArg("-checklevel", 3);
     int nCheckDepth = GetArg("-checkblocks", 288);

@@ -23,7 +23,7 @@
 #include <QTreeWidgetItem>
 
 using namespace std;
-QList<qint64> CoinControlDialog::payAmounts;
+QList<quint64> CoinControlDialog::payAmounts;
 CCoinControl* CoinControlDialog::coinControl = new CCoinControl();
 
 CoinControlDialog::CoinControlDialog(QWidget *parent) :
@@ -422,12 +422,12 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
     if (!model) return;
 
     // nPayAmount
-    qint64 nPayAmount = 0;
+    quint64 nPayAmount = 0;
     bool fLowOutput = false;
     bool fDust = false;
     unsigned int nQuantityDust = 0;
     CTransaction txDummy;
-    foreach(const qint64 &amount, CoinControlDialog::payAmounts)
+    foreach(const quint64 &amount, CoinControlDialog::payAmounts)
     {
         nPayAmount += amount;
         
@@ -448,8 +448,8 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
     QString sPriorityLabel      = "";
     uint64 nAmount               = 0;
     uint64 nPayFee               = 0;
-    uint64 nAfterFee             = 0;
-    uint64 nChange               = 0;
+    int64 nAfterFee             = 0;
+    int64 nChange               = 0;
     unsigned int nBytes         = 0;
     unsigned int nBytesInputs   = 0;
     double dPriority            = 0;
@@ -527,9 +527,9 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
             }
             
             // if sub-cent change is required, the fee must be raised to at least CTransaction::nMinTxFee   
-            if (nPayFee < CTransaction::nMinTxFee && nChange > 0 && nChange < CENT)
+            if (nPayFee < CTransaction::nMinTxFee && nChange > 0 && nChange < (int64)CENT)
             {
-                if (nChange < CTransaction::nMinTxFee) // change < 0.0001 => simply move all change to fees
+                if (nChange < (int64)CTransaction::nMinTxFee) // change < 0.0001 => simply move all change to fees
                 {
                     nPayFee += nChange;
                     nChange = 0;
@@ -542,7 +542,7 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
             }
             
             // Never create dust outputs; if we would, just add the dust to the fee.
-            if (nChange > 0 && nChange < CENT)
+            if (nChange > 0 && nChange < (int64)CENT)
             {
                 CTxOut txout(nChange, (CScript)vector<unsigned char>(24, 0));
                 if (txout.IsDust())
@@ -596,7 +596,7 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
     l5->setStyleSheet((nBytes >= 5000) ? "color:red;" : "");               // Bytes >= 5000
     l6->setStyleSheet((!CTransaction::AllowFree(dPriority)) ? "color:red;" : "");         // Priority < "medium"
     l7->setStyleSheet((fLowOutput) ? "color:red;" : "");                    // Low Output = "yes"
-    l8->setStyleSheet((nChange > 0 && nChange < CENT) ? "color:red;" : ""); // Change < 0.01BTC
+    l8->setStyleSheet((nChange > 0 && nChange < (int64)CENT) ? "color:red;" : ""); // Change < 0.01BTC
         
     // tool tips
     l5->setToolTip(tr("This label turns red, if the transaction size is bigger than 5000 bytes.\n\n This means a fee of at least %1 per kb is required.\n\n Can vary +/- 1 Byte per input.").arg(BitcoinUnits::formatWithUnit(nDisplayUnit, CTransaction::nMinTxFee)));
