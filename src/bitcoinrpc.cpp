@@ -31,7 +31,6 @@ using namespace boost;
 using namespace boost::asio;
 using namespace json_spirit;
 
-static std::string strRPCUserColonPass;
 
 // These are created by StartRPCThreads, destroyed in StopRPCThreads
 static asio::io_service* rpc_io_service = NULL;
@@ -208,20 +207,20 @@ Value stop(const Array& params, std::string username, bool fHelp)
 static const CRPCCommand vRPCCommands[] =
 { //  name                      actor (function)         okSafeMode threadSafe reqWallet adminsOnly
   //  ------------------------  -----------------------  ---------- ---------- --------- ----------
-    { "help",                   &help,                   true,      true,      false,    false},
-    { "stop",                   &stop,                   true,      true,      false,    true },
+    { "help",                   &help,                   true,      true,      false,    false },
+    { "stop",                   &stop,                   true,      true,      false,    true  },
     { "getblockcount",          &getblockcount,          true,      false,     false,    false },
     { "getchainvalue",          &getchainvalue,          true,      false,     false,    false },
     { "getbestblockhash",       &getbestblockhash,       true,      false,     false,    false },
-    { "getconnectioncount",     &getconnectioncount,     true,      false,     false,    true },
-    { "getpeerinfo",            &getpeerinfo,            true,      false,     false,    true },
-    { "addnode",                &addnode,                true,      true,      false,    true },
-    { "getaddednodeinfo",       &getaddednodeinfo,       true,      true,      false,    true },
+    { "getconnectioncount",     &getconnectioncount,     true,      false,     false,    true  },
+    { "getpeerinfo",            &getpeerinfo,            true,      false,     false,    true  },
+    { "addnode",                &addnode,                true,      true,      false,    true  },
+    { "getaddednodeinfo",       &getaddednodeinfo,       true,      true,      false,    true  },
     { "getdifficulty",          &getdifficulty,          true,      false,     false,    false },
     { "getnetworkhashps",       &getnetworkhashps,       true,      false,     false,    false },
-    { "getgenerate",            &getgenerate,            true,      false,     false,    true },
-    { "setgenerate",            &setgenerate,            true,      false,     true,     true },
-    { "gethashespersec",        &gethashespersec,        true,      false,     false,    true },
+    { "getgenerate",            &getgenerate,            true,      false,     false,    true  },
+    { "setgenerate",            &setgenerate,            true,      false,     true,     true  },
+    { "gethashespersec",        &gethashespersec,        true,      false,     false,    true  },
     { "getinfo",                &getinfo,                true,      false,     false,    false },
     { "getmininginfo",          &getmininginfo,          true,      false,     false,    false },
     { "getnewaddress",          &getnewaddress,          true,      false,     true,     false },
@@ -234,51 +233,51 @@ static const CRPCCommand vRPCCommands[] =
     { "getreceivedbyaccount",   &getreceivedbyaccount,   false,     false,     true,     false },
     { "listreceivedbyaddress",  &listreceivedbyaddress,  false,     false,     true,     false },
     { "listreceivedbyaccount",  &listreceivedbyaccount,  false,     false,     true,     false },
-    { "backupwallet",           &backupwallet,           true,      false,     true,     true },
-    { "keypoolrefill",          &keypoolrefill,          true,      false,     true,     true },
-    { "walletpassphrase",       &walletpassphrase,       true,      false,     true,     true },
-    { "walletpassphrasechange", &walletpassphrasechange, false,     false,     true,     true },
-    { "walletlock",             &walletlock,             true,      false,     true,     true },
-    { "encryptwallet",          &encryptwallet,          false,     false,     true,     true },
+    { "backupwallet",           &backupwallet,           true,      false,     true,     true  },
+    { "keypoolrefill",          &keypoolrefill,          true,      false,     true,     true  },
+    { "walletpassphrase",       &walletpassphrase,       true,      false,     true,     true  },
+    { "walletpassphrasechange", &walletpassphrasechange, false,     false,     true,     true  },
+    { "walletlock",             &walletlock,             true,      false,     true,     true  },
+    { "encryptwallet",          &encryptwallet,          false,     false,     true,     true  },
     { "validateaddress",        &validateaddress,        true,      false,     false,    false },
     { "getbalance",             &getbalance,             false,     false,     true,     false },
     { "move",                   &movecmd,                false,     false,     true,     false },
     { "sendfrom",               &sendfrom,               false,     false,     true,     false },
     { "sendmany",               &sendmany,               false,     false,     true,     false },
     { "addmultisigaddress",     &addmultisigaddress,     false,     false,     true,     false },
-    { "createmultisig",         &createmultisig,         true,      true ,     false,    true },
-    { "getrawmempool",          &getrawmempool,          true,      false,     false,    true },
+    { "createmultisig",         &createmultisig,         true,      true ,     false,    true  },
+    { "getrawmempool",          &getrawmempool,          true,      false,     false,    true  },
     { "getblock",               &getblock,               false,     false,     false,    false },
     { "getblockhash",           &getblockhash,           false,     false,     false,    false },
     { "gettransaction",         &gettransaction,         false,     false,     true,     false },
     { "listtransactions",       &listtransactions,       false,     false,     true,     false },
-    { "listaddressgroupings",   &listaddressgroupings,   false,     false,     true,     true },
+    { "listaddressgroupings",   &listaddressgroupings,   false,     false,     true,     true  },
     { "signmessage",            &signmessage,            false,     false,     true,     false },
-    { "verifymessage",          &verifymessage,          false,     false,     false,    true },
+    { "verifymessage",          &verifymessage,          false,     false,     false,    true  },
     { "getwork",                &getwork,                true,      false,     true,     false },
     { "getworkex",              &getworkex,              true,      false,     true,     false },
     { "listaccounts",           &listaccounts,           false,     false,     true,     false },
-    { "settxfee",               &settxfee,               false,     false,     true,     true },
-    { "getblocktemplate",       &getblocktemplate,       true,      false,     false,     false },
-    { "submitblock",            &submitblock,            false,     false,     false,     false },
-    { "setmininput",            &setmininput,            false,     false,     false,     true },
-    { "listsinceblock",         &listsinceblock,         false,     false,     true,      false },
-    { "dumpprivkey",            &dumpprivkey,            true,      false,     true,      false },
-    { "importprivkey",          &importprivkey,          false,     false,     true,      false },
-    { "listunspent",            &listunspent,            false,     false,     true,      true },
-    { "getrawtransaction",      &getrawtransaction,      false,     false,     false,     false },
-    { "createrawtransaction",   &createrawtransaction,   false,     false,     false,     false },
-    { "decoderawtransaction",   &decoderawtransaction,   false,     false,     false,     false },
-    { "signrawtransaction",     &signrawtransaction,     false,     false,     false,     true },
-    { "sendrawtransaction",     &sendrawtransaction,     false,     false,     false,     true },
-    { "gettxoutsetinfo",        &gettxoutsetinfo,        true,      false,     false,     true },
-    { "gettxout",               &gettxout,               true,      false,     false,     true },
-    { "lockunspent",            &lockunspent,            false,     false,     true,      true },
-    { "listlockunspent",        &listlockunspent,        false,     false,     true,      true },
-    { "verifychain",            &verifychain,            true,      false,     false,     true },
-    { "adduser",                &adduser,                true,      false,     false,     true },
-    { "authuser",               &authuser,               true,      false,     false,     true },
-    { "whoami",                 &whoami,                 true,      false,     false,     false },
+    { "settxfee",               &settxfee,               false,     false,     true,     true  },
+    { "getblocktemplate",       &getblocktemplate,       true,      false,     false,    false },
+    { "submitblock",            &submitblock,            false,     false,     false,    false },
+    { "setmininput",            &setmininput,            false,     false,     false,    true  },
+    { "listsinceblock",         &listsinceblock,         false,     false,     true,     false },
+    { "dumpprivkey",            &dumpprivkey,            true,      false,     true,     false },
+    { "importprivkey",          &importprivkey,          false,     false,     true,     false },
+    { "listunspent",            &listunspent,            false,     false,     true,     true  },
+    { "getrawtransaction",      &getrawtransaction,      false,     false,     false,    false },
+    { "createrawtransaction",   &createrawtransaction,   false,     false,     false,    false },
+    { "decoderawtransaction",   &decoderawtransaction,   false,     false,     false,    false },
+    { "signrawtransaction",     &signrawtransaction,     false,     false,     false,    true  },
+    { "sendrawtransaction",     &sendrawtransaction,     false,     false,     false,    true  },
+    { "gettxoutsetinfo",        &gettxoutsetinfo,        true,      false,     false,    true  },
+    { "gettxout",               &gettxout,               true,      false,     false,    true  },
+    { "lockunspent",            &lockunspent,            false,     false,     true,     true  },
+    { "listlockunspent",        &listlockunspent,        false,     false,     true,     true  },
+    { "verifychain",            &verifychain,            true,      false,     false,    true  },
+    { "adduser",                &adduser,                true,      false,     false,    true  },
+    { "authuser",               &authuser,               true,      false,     false,    true  },
+    { "whoami",                 &whoami,                 true,      false,     false,    false },
 };
 
 CRPCTable::CRPCTable()
@@ -519,8 +518,7 @@ string HTTPAuthorized(map<string, string>& mapHeaders)
     {
         string user = strUserPass.substr(0, idx);
         string pass = strUserPass.substr(idx+1, strUserPass.size());
-        if(TimingResistantEqual(strUserPass, strRPCUserColonPass))
-            return user;
+
         if(pusers->UserAuth(user, pass))
             return user;
     }
@@ -771,7 +769,6 @@ static void RPCAcceptHandler(boost::shared_ptr< basic_socket_acceptor<Protocol, 
 
 void StartRPCThreads()
 {
-    strRPCUserColonPass = mapArgs["-rpcuser"] + ":" + mapArgs["-rpcpassword"];
     if ((mapArgs["-rpcpassword"] == "") ||
         (mapArgs["-rpcuser"] == mapArgs["-rpcpassword"]))
     {
@@ -800,7 +797,10 @@ void StartRPCThreads()
         StartShutdown();
         return;
     }
-
+    if(!pusers->UserExists(mapArgs["-rpcuser"]) && !pusers->RootAccountExists())
+    {
+        pusers->UserAdd(mapArgs["-rpcuser"], mapArgs["-rpcpassword"]);
+    }
     assert(rpc_io_service == NULL);
     rpc_io_service = new asio::io_service();
     rpc_ssl_context = new ssl::context(*rpc_io_service, ssl::context::sslv23);
@@ -1019,7 +1019,7 @@ void ServiceConnection(AcceptedConnection *conn)
             conn->stream() << HTTPReply(HTTP_UNAUTHORIZED, "", false) << std::flush;
             break;
         }
-        if(user == mapArgs["-rpcuser"])
+        if(!pusers->root.empty() && user == pusers->root)
             user = "root";
 
         if (mapHeaders["connection"] == "close")

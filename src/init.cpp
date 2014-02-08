@@ -608,33 +608,37 @@ bool AppInit2(boost::thread_group& threadGroup)
     // cost to you of processing a transaction.
     if (mapArgs.count("-mintxfee"))
     {
-        uint64 n = 0;
+        int64 n = 0;
         if (ParseMoney(mapArgs["-mintxfee"], n) && n > 0)
-            CTransaction::nMinTxFee = n;
+            CTransaction::nMinTxFee = (uint64)n;
         else
             return InitError(strprintf(_("Invalid amount for -mintxfee=<amount>: '%s'"), mapArgs["-mintxfee"].c_str()));
     }
     if (mapArgs.count("-minrelaytxfee"))
     {
-        uint64 n = 0;
+        int64 n = 0;
         if (ParseMoney(mapArgs["-minrelaytxfee"], n) && n > 0)
-            CTransaction::nMinRelayTxFee = n;
+            CTransaction::nMinRelayTxFee = (uint64)n;
         else
             return InitError(strprintf(_("Invalid amount for -minrelaytxfee=<amount>: '%s'"), mapArgs["-minrelaytxfee"].c_str()));
     }
 
     if (mapArgs.count("-paytxfee"))
     {
-        if (!ParseMoney(mapArgs["-paytxfee"], nTransactionFee))
+        int64 txfee = 0;
+        if (!ParseMoney(mapArgs["-paytxfee"], txfee) && txfee > 0)
             return InitError(strprintf(_("Invalid amount for -paytxfee=<amount>: '%s'"), mapArgs["-paytxfee"].c_str()));
+        nTransactionFee = (uint64)txfee;
         if (nTransactionFee > 0.25 * COIN)
             InitWarning(_("Warning: -paytxfee is set very high! This is the transaction fee you will pay if you send a transaction."));
     }
 
     if (mapArgs.count("-mininput"))
     {
-        if (!ParseMoney(mapArgs["-mininput"], nMinimumInputValue))
+        int64 mininput = 0;
+        if (!ParseMoney(mapArgs["-mininput"], mininput) && mininput > 0)
             return InitError(strprintf(_("Invalid amount for -mininput=<amount>: '%s'"), mapArgs["-mininput"].c_str()));
+        nMinimumInputValue = mininput;
     }
 
     // ********************************************************* Step 4: application initialization: dir lock, daemonize, pidfile, debug log

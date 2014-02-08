@@ -386,13 +386,13 @@ void ParseString(const string& str, char c, vector<string>& v)
 }
 
 
-string FormatMoney(uint64 n, bool fPlus)
+string FormatMoney(int64 n, bool fPlus)
 {
     // Note: not using straight sprintf here because we do NOT want
     // localized number formatting.
-    uint64 n_abs = (n > 0 ? n : -n);
-    uint64 quotient = n_abs/COIN;
-    uint64 remainder = n_abs%COIN;
+    int64 n_abs = (n > 0 ? n : -n);
+    int64 quotient = n_abs/COIN;
+    int64 remainder = n_abs%COIN;
     string str = strprintf("%"PRI64d".%08"PRI64d, quotient, remainder);
 
     // Right-trim excess zeros before the decimal point:
@@ -410,15 +410,15 @@ string FormatMoney(uint64 n, bool fPlus)
 }
 
 
-bool ParseMoney(const string& str, uint64& nRet)
+bool ParseMoney(const string& str, int64& nRet)
 {
     return ParseMoney(str.c_str(), nRet);
 }
 
-bool ParseMoney(const char* pszIn, uint64& nRet)
+bool ParseMoney(const char* pszIn, int64& nRet)
 {
     string strWhole;
-    uint64 nUnits = 0;
+    int64 nUnits = 0;
     const char* p = pszIn;
     while (isspace(*p))
         p++;
@@ -448,8 +448,8 @@ bool ParseMoney(const char* pszIn, uint64& nRet)
         return false;
     if (nUnits < 0 || nUnits > COIN)
         return false;
-    uint64 nWhole = atoi64(strWhole);
-    uint64 nValue = nWhole*COIN + nUnits;
+    int64 nWhole = atoi64(strWhole);
+    int64 nValue = nWhole*COIN + nUnits;
 
     nRet = nValue;
     return true;
