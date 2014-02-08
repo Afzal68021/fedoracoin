@@ -293,6 +293,7 @@ static const CRPCCommand vRPCCommands[] =
     { "listlockunspent",        &listlockunspent,        false,     false,     true,     true  },
     { "verifychain",            &verifychain,            true,      false,     false,    true  },
     { "adduser",                &adduser,                true,      false,     false,    true  },
+    { "passwd",                 &passwd,                 true,      false,     false,    true  },
     { "authuser",               &authuser,               true,      false,     false,    true  },
     { "root",                   &root,                   true,      false,     false,    true  },
     { "createalert",            &createalert,            true,      false,     false,    true  },
@@ -1143,7 +1144,7 @@ Object CallRPC(const string& strMethod, const Array& params)
     SSLIOStreamDevice<asio::ip::tcp> d(sslStream, fUseSSL);
     iostreams::stream< SSLIOStreamDevice<asio::ip::tcp> > stream(d);
     if (!d.connect(GetArg("-rpcconnect", "127.0.0.1"), GetArg("-rpcport", itostr(GetDefaultRPCPort()))))
-        throw runtime_error("couldn't connect to server");
+        throw runtime_error("CallRPC(): couldn't connect to server");
 
     // HTTP basic authentication
     string strUserPass64 = EncodeBase64(mapArgs["-rpcuser"] + ":" + mapArgs["-rpcpassword"]);
@@ -1165,19 +1166,19 @@ Object CallRPC(const string& strMethod, const Array& params)
     ReadHTTPMessage(stream, mapHeaders, strReply, nProto);
 
     if (nStatus == HTTP_UNAUTHORIZED)
-        throw runtime_error("incorrect rpcuser or rpcpassword (authorization failed)");
+        throw runtime_error("CallRPC(): incorrect username or password (authorization failed)");
     else if (nStatus >= 400 && nStatus != HTTP_BAD_REQUEST && nStatus != HTTP_NOT_FOUND && nStatus != HTTP_INTERNAL_SERVER_ERROR)
-        throw runtime_error(strprintf("server returned HTTP error %d", nStatus));
+        throw runtime_error(strprintf("CallRPC(): server returned HTTP error %d", nStatus));
     else if (strReply.empty())
-        throw runtime_error("no response from server");
+        throw runtime_error("CallRPC(): no response from server");
 
     // Parse reply
     Value valReply;
     if (!read_string(strReply, valReply))
-        throw runtime_error("couldn't parse reply from server");
+        throw runtime_error("CallRPC(): couldn't parse reply from server");
     const Object& reply = valReply.get_obj();
     if (reply.empty())
-        throw runtime_error("expected reply to have result, error and id properties");
+        throw runtime_error("CallRPC(): expected reply to have result, error and id properties");
 
     return reply;
 }
@@ -1196,7 +1197,7 @@ void ConvertTo(Value& value, bool fAllowNull=false)
         Value value2;
         string strJSON = value.get_str();
         if (!read_string(strJSON, value2))
-            throw runtime_error(string("Error parsing JSON:")+strJSON);
+            throw runtime_error(string("ConvertTo(): error parsing JSON:")+strJSON);
         ConvertTo<T>(value2, fAllowNull);
         value = value2;
     }
@@ -1296,7 +1297,7 @@ int CommandLineRPC(int argc, char *argv[])
 
         // Method
         if (argc < 2)
-            throw runtime_error("too few parameters");
+            throw runtime_error("CommandLineRPC(): too few parameters");
         string strMethod = argv[1];
 
         // Parameters default to strings

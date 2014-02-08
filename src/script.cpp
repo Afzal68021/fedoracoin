@@ -34,7 +34,7 @@ static const size_t nMaxNumSize = 4;
 CBigNum CastToBigNum(const valtype& vch)
 {
     if (vch.size() > nMaxNumSize)
-        throw runtime_error("CastToBigNum() : overflow");
+        throw runtime_error("CastToBigNum(): overflow");
     // Get rid of extra leading zeros
     return CBigNum(CBigNum(vch).getvch());
 }
@@ -65,7 +65,7 @@ bool CastToBool(const valtype& vch)
 static inline void popstack(vector<valtype>& stack)
 {
     if (stack.empty())
-        throw runtime_error("popstack() : stack empty");
+        throw runtime_error("popstack(): stack empty");
     stack.pop_back();
 }
 

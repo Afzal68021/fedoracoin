@@ -306,7 +306,7 @@ Value setmininput(const Array& params, string username, bool fHelp)
     if (fHelp || params.size() < 1 || params.size() > 1)
         throw runtime_error(
             "setmininput <amount>\n"
-            "<amount> is a real and is rounded to the nearest 0.00000001");
+            "<amount> is a real and is rounded to the nearest 0.00000001.");
 
     if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
@@ -326,7 +326,7 @@ Value listaddressgroupings(const Array& params, string username, bool fHelp)
             "listaddressgroupings\n"
             "Lists groups of addresses which have had their common ownership\n"
             "made public by common use as inputs or as the resulting change\n"
-            "in past transactions");
+            "in past transactions.");
 
     if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
@@ -396,7 +396,7 @@ Value verifymessage(const Array& params, string username, bool fHelp)
     if (fHelp || params.size() != 3)
         throw runtime_error(
             "verifymessage <fedoracoinaddress> <signature> <message>\n"
-            "Verify a signed message");
+            "Verify a signed message.");
 
     if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
@@ -666,7 +666,7 @@ Value sendtoaddress(const Array& params, string username, bool fHelp)
         throw runtime_error(
             "sendtoaddress <fedoracoinaddress>[:mixed] <amount> [comment] [comment-to]\n"
             "<amount> is a real and is rounded to the nearest 0.00000001\n"
-            "coins can be mixed by appending :mixed to the destination address, which will conceal the address you sent them from"
+            "coins can be mixed by appending :mixed to the destination address, which will conceal the address you sent them from."
             + HelpRequiringPassphrase());
 
     string strAddress = params[0].get_str();
@@ -709,7 +709,7 @@ Value sendfrom(const Array& params, string username, bool fHelp)
         throw runtime_error(
             "sendfrom <fromaccount>[:mixed] <tofedoracoinaddress> <amount> [minconf=1] [comment] [comment-to]\n"
             "<amount> is a real and is rounded to the nearest 0.00000001\n"
-            "coins can be mixed by appending :mixed to the account name, which will conceal the address you sent them from"
+            "coins can be mixed by appending :mixed to the account name, which will conceal the address you sent them from."
             + HelpRequiringPassphrase());
 
     string strAccount = AccountFromValue(params[0]);
@@ -762,7 +762,7 @@ Value sendmany(const Array& params, string username, bool fHelp)
         throw runtime_error(
             "sendmany <fromaccount>[:mixed] {address:amount,...} [minconf=1] [comment]\n"
             "amounts are double-precision floating point numbers\n"
-            "coins can be mixed by appending :mixed to the account name, which will conceal the address you sent them from"
+            "coins can be mixed by appending :mixed to the account name, which will conceal the address you sent them from."
             + HelpRequiringPassphrase());
 
     string strAccount = AccountFromValue(params[0]);
@@ -840,10 +840,10 @@ static CScript _createmultisig(const Array& params)
 
     // Gather public keys
     if (nRequired < 1)
-        throw runtime_error("a multisignature address must require at least one key to redeem");
+        throw runtime_error("_createmultisig(): a multisignature address must require at least one key to redeem");
     if ((int)keys.size() < nRequired)
         throw runtime_error(
-            strprintf("not enough keys supplied "
+            strprintf("_createmultisig(): not enough keys supplied "
                       "(got %"PRIszu" keys, but need at least %d to redeem)", keys.size(), nRequired));
     std::vector<CPubKey> pubkeys;
     pubkeys.resize(keys.size());
@@ -858,13 +858,13 @@ static CScript _createmultisig(const Array& params)
             CKeyID keyID;
             if (!address.GetKeyID(keyID))
                 throw runtime_error(
-                    strprintf("%s does not refer to a key",ks.c_str()));
+                    strprintf("_createmultisig(): %s does not refer to a key",ks.c_str()));
             CPubKey vchPubKey;
             if (!pwalletMain->GetPubKey(keyID, vchPubKey))
                 throw runtime_error(
-                    strprintf("no full public key for address %s",ks.c_str()));
+                    strprintf("_createmultisig(): no full public key for address %s",ks.c_str()));
             if (!vchPubKey.IsFullyValid())
-                throw runtime_error(" Invalid public key: "+ks);
+                throw runtime_error("_createmultisig(): invalid public key: "+ks);
             pubkeys[i] = vchPubKey;
         }
 
@@ -873,12 +873,12 @@ static CScript _createmultisig(const Array& params)
         {
             CPubKey vchPubKey(ParseHex(ks));
             if (!vchPubKey.IsFullyValid())
-                throw runtime_error(" Invalid public key: "+ks);
+                throw runtime_error("_createmultisig(): invalid public key: "+ks);
             pubkeys[i] = vchPubKey;
         }
         else
         {
-            throw runtime_error(" Invalid public key: "+ks);
+            throw runtime_error("_createmultisig(): invalid public key: "+ks);
         }
     }
     CScript result;
@@ -889,13 +889,11 @@ static CScript _createmultisig(const Array& params)
 Value addmultisigaddress(const Array& params, string username, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 3)
-    {
-        string msg = "addmultisigaddress <nrequired> <'[\"key\",\"key\"]'> [account]\n"
+        throw runtime_error(
+            "addmultisigaddress <nrequired> <'[\"key\",\"key\"]'> [account]\n"
             "Add a nrequired-to-sign multisignature address to the wallet\"\n"
             "each key is a FedoraCoin address or hex-encoded public key\n"
-            "If [account] is specified, assign address to [account].";
-        throw runtime_error(msg);
-    }
+            "If [account] is specified, assign address to [account].");
 
     string strAccount;
     if (params.size() > 2)
@@ -922,14 +920,12 @@ Value addmultisigaddress(const Array& params, string username, bool fHelp)
 Value createmultisig(const Array& params, string username, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 2)
-    {
-        string msg = "createmultisig <nrequired> <'[\"key\",\"key\"]'>\n"
+        throw runtime_error(
+            "createmultisig <nrequired> <'[\"key\",\"key\"]'>\n"
             "Creates a multi-signature address and returns a json object\n"
             "with keys:\n"
             "address : fedoracoin address\n"
-            "redeemScript : hex-encoded redemption script";
-        throw runtime_error(msg);
-    }
+            "redeemScript : hex-encoded redemption script.");
 
     if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
@@ -1077,7 +1073,7 @@ Value listreceivedbyaddress(const Array& params, string username, bool fHelp)
             "  \"account\" : the account of the receiving address\n"
             "  \"amount\" : total amount received by the address\n"
             "  \"confirmations\" : number of confirmations of the most recent transaction included\n"
-            "  \"txids\" : list of transactions with outputs to the address\n");
+            "  \"txids\" : list of transactions with outputs to the address.\n");
 
     return ListReceived(params, username, false);
 }
@@ -1092,7 +1088,7 @@ Value listreceivedbyaccount(const Array& params, string username, bool fHelp)
             "Returns an array of objects containing:\n"
             "  \"account\" : the account of the receiving addresses\n"
             "  \"amount\" : total amount received by addresses with this account\n"
-            "  \"confirmations\" : number of confirmations of the most recent transaction included");
+            "  \"confirmations\" : number of confirmations of the most recent transaction included.");
 
     return ListReceived(params, username, true);
 }
@@ -1303,7 +1299,7 @@ Value listsinceblock(const Array& params, string username, bool fHelp)
     if (fHelp)
         throw runtime_error(
             "listsinceblock [blockhash] [target-confirmations]\n"
-            "Get all transactions in blocks since block [blockhash], or all transactions if omitted");
+            "Get all transactions in blocks since block [blockhash], or all transactions if omitted.");
 
     CBlockIndex *pindex = NULL;
     int target_confirms = 1;
@@ -1366,7 +1362,7 @@ Value gettransaction(const Array& params, string username, bool fHelp)
     if (fHelp || params.size() != 1)
         throw runtime_error(
             "gettransaction <txid>\n"
-            "Get detailed information about in-wallet transaction <txid>");
+            "Get detailed information about in-wallet transaction <txid>.");
 
     uint256 hash;
     hash.SetHex(params[0].get_str());

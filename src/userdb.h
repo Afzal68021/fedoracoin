@@ -24,6 +24,7 @@ public:
     bool RootAccountGet(std::string &username);
     bool UserExists(std::string username);
     bool UserAdd(std::string username, std::string password);
+    bool UserUpdate(std::string username, std::string password);
     bool UserAuth(std::string username, std::string password);
     bool UserAccountAdd(std::string username, std::string account, std::string &accountInternal);
     bool UserAccountDefault(std::string username, std::string &account);

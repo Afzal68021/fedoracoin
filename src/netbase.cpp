@@ -15,6 +15,13 @@
 #define ssize_t size_t
 #endif
 
+// MSG_NOSIGNAL does not exists on OS X
+#if defined(__APPLE__) || defined(__MACH__)
+    #ifndef MSG_NOSIGNAL
+        #define MSG_NOSIGNAL SO_NOSIGPIPE
+    #endif
+#endif
+
 #include <boost/algorithm/string/case_conv.hpp> // for to_lower()
 #include <boost/algorithm/string/predicate.hpp> // for startswith() and endswith()
 

@@ -47,7 +47,7 @@ CPubKey CWallet::GenerateNewKey()
 
     CPubKey pubkey = secret.GetPubKey();
     if (!AddKeyPubKey(secret, pubkey))
-        throw std::runtime_error("CWallet::GenerateNewKey() : AddKey failed");
+        throw std::runtime_error("CWallet::GenerateNewKey(): AddKey failed");
     return pubkey;
 }
 
@@ -1769,7 +1769,7 @@ bool CWallet::TopUpKeyPool()
             if (!setKeyPool.empty())
                 nEnd = *(--setKeyPool.end()) + 1;
             if (!walletdb.WritePool(nEnd, CKeyPool(GenerateNewKey())))
-                throw runtime_error("TopUpKeyPool() : writing generated key failed");
+                throw runtime_error("TopUpKeyPool(): writing generated key failed");
             setKeyPool.insert(nEnd);
             printf("keypool added key %"PRI64d", size=%"PRIszu"\n", nEnd, setKeyPool.size());
         }
@@ -1796,9 +1796,9 @@ void CWallet::ReserveKeyFromKeyPool(int64& nIndex, CKeyPool& keypool)
         nIndex = *(setKeyPool.begin());
         setKeyPool.erase(setKeyPool.begin());
         if (!walletdb.ReadPool(nIndex, keypool))
-            throw runtime_error("ReserveKeyFromKeyPool() : read failed");
+            throw runtime_error("ReserveKeyFromKeyPool(): read failed");
         if (!HaveKey(keypool.vchPubKey.GetID()))
-            throw runtime_error("ReserveKeyFromKeyPool() : unknown key in key pool");
+            throw runtime_error("ReserveKeyFromKeyPool(): unknown key in key pool");
         assert(keypool.vchPubKey.IsValid());
         printf("keypool reserve %"PRI64d"\n", nIndex);
     }
@@ -1812,7 +1812,7 @@ int64 CWallet::AddReserveKey(const CKeyPool& keypool)
 
         int64 nIndex = 1 + *(--setKeyPool.end());
         if (!walletdb.WritePool(nIndex, keypool))
-            throw runtime_error("AddReserveKey() : writing added key failed");
+            throw runtime_error("AddReserveKey(): writing added key failed");
         setKeyPool.insert(nIndex);
         return nIndex;
     }
@@ -2055,11 +2055,11 @@ void CWallet::GetAllReserveKeys(set<CKeyID>& setAddress)
     {
         CKeyPool keypool;
         if (!walletdb.ReadPool(id, keypool))
-            throw runtime_error("GetAllReserveKeyHashes() : read failed");
+            throw runtime_error("GetAllReserveKeys(): read failed");
         assert(keypool.vchPubKey.IsValid());
         CKeyID keyID = keypool.vchPubKey.GetID();
         if (!HaveKey(keyID))
-            throw runtime_error("GetAllReserveKeyHashes() : unknown key in key pool");
+            throw runtime_error("GetAllReserveKeys(): unknown key in key pool");
         setAddress.insert(keyID);
     }
 }

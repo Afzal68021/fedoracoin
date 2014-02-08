@@ -219,6 +219,7 @@ extern json_spirit::Value signalert(const json_spirit::Array& params, std::strin
 extern json_spirit::Value sendalert(const json_spirit::Array& params, std::string username, bool fHelp);
 
 extern json_spirit::Value adduser(const json_spirit::Array& params, std::string username, bool fHelp); // in rpcusers.cpp
+extern json_spirit::Value passwd(const json_spirit::Array& params, std::string username, bool fHelp);
 extern json_spirit::Value authuser(const json_spirit::Array& params, std::string username, bool fHelp);
 extern json_spirit::Value whoami(const json_spirit::Array& params, std::string username, bool fHelp);
 extern json_spirit::Value root(const json_spirit::Array& params, std::string username, bool fHelp);

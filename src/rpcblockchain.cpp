@@ -89,7 +89,7 @@ Value sendalert(const Array& params, std::string username, bool fHelp)
     if(alert.CheckSignature())
         ProcessMessage(NULL, "alert", vRecv2);
     else
-        throw JSONRPCError(RPC_INVALID_REQUEST, "Invalid signature on alert, not sending");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid signature on alert, not sending");
     return true;
 }
 
@@ -114,7 +114,7 @@ Value signalert(const Array& params, std::string username, bool fHelp)
     CKey key2;
     key2.SetPrivKey(key, false);
     if(!key2.Sign(alert.GetHash(), alert.vchSig))
-        throw JSONRPCError(RPC_INVALID_REQUEST, "Sign failed, invalid key?");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Sign failed, invalid key?");
 
     if(alert.CheckSignature())
     {
@@ -137,40 +137,28 @@ Value createalert(const Array& params, std::string username, bool fHelp)
     CUnsignedAlert alert;
     alert.SetNull();
 
-    if(params.size() > 0)
-        alert.nRelayUntil = params[0].get_int64();
-    if(params.size() > 1)
-        alert.nExpiration = params[1].get_int64();
-    if(params.size() > 2)
-        alert.nID = params[2].get_int();
-    if(params.size() > 3)
-        alert.nCancel = params[3].get_int();
-    if(params.size() > 4)
+    alert.nRelayUntil = params[0].get_int64();
+    alert.nExpiration = params[1].get_int64();
+    alert.nID = params[2].get_int();
+    alert.nCancel = params[3].get_int();
+
+    Array setCancels = params[4].get_array();
+    BOOST_FOREACH(const Value& cid, setCancels)
     {
-        Array setCancels = params[4].get_array();
-        BOOST_FOREACH(const Value& cid, setCancels)
-        {
-            alert.setCancel.insert(cid.get_int());
-        }
+        alert.setCancel.insert(cid.get_int());
     }
-    if(params.size() > 5)
-        alert.nMinVer = params[5].get_int();
-    if(params.size() > 6)
-        alert.nMaxVer = params[6].get_int();
-    if(params.size() > 7)
+
+    alert.nMinVer = params[5].get_int();
+    alert.nMaxVer = params[6].get_int();
+    Array setSubVer = params[7].get_array();
+    BOOST_FOREACH(const Value& cid, setSubVer)
     {
-        Array setSubVer = params[7].get_array();
-        BOOST_FOREACH(const Value& cid, setSubVer)
-        {
-            alert.setSubVer.insert(cid.get_str());
-        }
+        alert.setSubVer.insert(cid.get_str());
     }
-    if(params.size() > 8)
-        alert.nPriority = params[8].get_int();
-    if(params.size() > 9)
-        alert.strComment = params[9].get_str();
-    if(params.size() > 10)
-        alert.strStatusBar = params[10].get_str();
+    alert.nPriority = params[8].get_int();
+    alert.strComment = params[9].get_str();
+    alert.strStatusBar = params[10].get_str();
+
     if(params.size() > 11)
         alert.strReserved = params[11].get_str();
 
@@ -228,7 +216,7 @@ Value settxfee(const Array& params, std::string username, bool fHelp)
     if (fHelp || params.size() < 1 || params.size() > 1)
         throw runtime_error(
             "settxfee <amount>\n"
-            "<amount> is a real and is rounded to the nearest 0.00000001");
+            "<amount> is a real and is rounded to the nearest 0.00000001.");
 
     if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
@@ -269,7 +257,7 @@ Value getblockhash(const Array& params, std::string username, bool fHelp)
 
     int nHeight = params[0].get_int();
     if (nHeight < 0 || nHeight > nBestHeight)
-        throw runtime_error("Block number out of range.");
+        throw runtime_error("getblockhash(): block number out of range.");
 
     CBlockIndex* pblockindex = FindBlockByHeight(nHeight);
     return pblockindex->phashBlock->GetHex();

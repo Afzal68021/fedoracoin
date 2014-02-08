@@ -61,9 +61,18 @@ bool CUserDB::UserAdd(string username, string password)
     std::transform(user.begin(), user.end(), user.begin(), ::tolower);
     if(this->UserExists(user)) return false;
     uint256 pass_hash = Hash(password.begin(), password.end());
-    srand(time(NULL));
     string acct = user;
     return Write("U:" + user, pass_hash) && this->UserAccountAdd(user, acct, acct) && Write("UD:" + user, acct) && (!this->RootAccountExists() ? this->RootAccountSet(user) : true);
+}
+
+bool CUserDB::UserUpdate(string username, string password)
+{
+    string user = username;
+    std::transform(user.begin(), user.end(), user.begin(), ::tolower);
+    if(user == "root" || user == "false") return false;
+    if(!this->UserExists(user)) return false;
+    uint256 pass_hash = Hash(password.begin(), password.end());
+    return Write("U:" + user, pass_hash);
 }
 
 bool CUserDB::UserAuth(string username, string password)

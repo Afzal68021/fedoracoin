@@ -19,23 +19,50 @@ Value adduser(const Array& params, std::string username, bool fHelp)
     if (fHelp || params.size() != 2)
         throw runtime_error(
             "adduser <username> <password>\n"
-            "Allows the login combination to access the server via RPC");
+            "Allows the login combination to access the server via RPC.");
 
     if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     string strUser = params[0].get_str();
     string strPass = params[1].get_str();
     if(!pusers->UserAdd(strUser, strPass))
-        throw JSONRPCError(RPC_DATABASE_ERROR, "add user failed");
+        throw JSONRPCError(RPC_INVALID_PARAMS, "Add user failed");
     return true;
 }
+Value passwd(const Array& params, std::string username, bool fHelp)
+{
+    if (fHelp || (username == "root" && params.size() != 2) || (username != "root" && params.size() != 1))
+    {
+        string start = (username == "root" ? "passwd <username> <password>\n" : "passwd <password>\n");
+        throw runtime_error(
+            start +
+            "Updates user password.");
+    }
 
+    if(params.size() == 2 && username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+
+    string strUser = params[0].get_str();
+    string strNewPass;
+    if(params.size() > 1)
+        strNewPass = params[1].get_str();
+    else
+    {
+        strNewPass = strUser;
+        strUser = username;
+    }
+    if(!pusers->UserExists(strUser))
+        throw JSONRPCError(RPC_INVALID_PARAMS, "User not found");
+    if(!pusers->UserUpdate(strUser, strNewPass))
+        throw JSONRPCError(RPC_INVALID_PARAMS, "User update failed");
+
+    return true;
+}
 Value authuser(const Array& params, std::string username, bool fHelp)
 {
     if (fHelp || params.size() != 2)
         throw runtime_error(
             "authuser <username> <password>\n"
-            "tests the username and password to see if the user can login");
+            "Tests the username and password to see if the user can login.");
 
     if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
@@ -49,7 +76,7 @@ Value whoami(const Array& params, std::string username, bool fHelp)
     if (fHelp || params.size() != 0)
         throw runtime_error(
             "whoami\n"
-            "prints the currently logged in users name");
+            "Prints the currently logged in users name.");
 
     return username;
 }
@@ -59,7 +86,7 @@ Value root(const Array& params, std::string username, bool fHelp)
     if (fHelp || params.size() != 0)
         throw runtime_error(
             "root"
-            "prints the root username");
+            "Prints the root username.");
 
     if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
