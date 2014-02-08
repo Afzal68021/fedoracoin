@@ -80,7 +80,10 @@ extern CScript COINBASE_FLAGS;
 extern uint64 GetChainValue(int nNumBlocks);
 extern CCriticalSection cs_main;
 extern std::map<uint256, CBlockIndex*> mapBlockIndex;
+#ifndef _MSC_VER
+//this extern needs to be moved to compile under VC but we don't need it anyway
 extern std::set<CBlockIndex*, CBlockIndexWorkComparator> setBlockIndexValid;
+#endif
 extern uint256 nGenesisBlockHash;
 extern uint256 nGenesisMerkleRoot;
 extern CBlockIndex* pindexGenesisBlock;
@@ -707,7 +710,7 @@ public:
 
     CTxOutCompressor(CTxOut &txoutIn) : txout(txoutIn) { }
 
-    IMPLEMENT_SERIALIZE(({
+    IMPLEMENT_SERIALIZE({
         if (!fRead) {
             uint64 nVal = CompressAmount(txout.nValue);
             READWRITE(VARINT(nVal));
@@ -718,7 +721,7 @@ public:
         }
         CScriptCompressor cscript(REF(txout.scriptPubKey));
         READWRITE(cscript);
-    });)
+    };)
 };
 
 /** Undo information for a CTxIn
@@ -832,7 +835,7 @@ public:
             filein >> hashChecksum;
         }
         catch (std::exception &e) {
-            return error("%s() : deserialize or I/O error", __PRETTY_FUNCTION__);
+            return error("%s() : deserialize or I/O error", BOOST_CURRENT_FUNCTION);
         }
 
         // Verify checksum
@@ -1483,7 +1486,7 @@ public:
             filein >> *this;
         }
         catch (std::exception &e) {
-            return error("%s() : deserialize or I/O error", __PRETTY_FUNCTION__);
+            return error("%s() : deserialize or I/O error", BOOST_CURRENT_FUNCTION);
         }
 
         // Check the header

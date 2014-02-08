@@ -314,8 +314,13 @@ string vstrprintf(const char *format, va_list ap)
     int ret;
     loop
     {
+#ifndef _MSC_VER
         va_list arg_ptr;
         va_copy(arg_ptr, ap);
+#else
+        va_list arg_ptr = ap;
+#endif
+
 #ifdef WIN32
         ret = _vsnprintf(p, limit, format, arg_ptr);
 #else

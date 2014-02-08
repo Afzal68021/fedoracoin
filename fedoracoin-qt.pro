@@ -29,6 +29,7 @@ OPENSSL_INCLUDE_PATH=c:/deps/openssl-1.0.1e/include
 OPENSSL_LIB_PATH=c:/deps/openssl-1.0.1e
 MINIUPNPC_LIB_PATH=c:/deps/boost_1_54_0/miniupnpc
 MINIUPNPC_INCLUDE_PATH=c:/deps
+USE_BUILD_INFO=1
 
 OBJECTS_DIR = build
 MOC_DIR = build
@@ -180,14 +181,14 @@ QMAKE_CLEAN += $$PWD/src/leveldb/libleveldb.a; cd $$PWD/src/leveldb ; $(MAKE) cl
 # regenerate src/build.h
 !win32|contains(USE_BUILD_INFO, 1) {
     genbuild.depends = FORCE
-    genbuild.commands = cd $$PWD; /bin/sh share/genbuild.sh $$OUT_PWD/build/build.h
-    genbuild.target = $$OUT_PWD/build/build.h
-    PRE_TARGETDEPS += $$OUT_PWD/build/build.h
+    genbuild.commands = cd $$PWD; /bin/sh share/genbuild.sh $$PWD/src/build.h
+    genbuild.target = $$PWD/src/build.h
+    PRE_TARGETDEPS += $$PWD/src/build.h
     QMAKE_EXTRA_TARGETS += genbuild
     DEFINES += HAVE_BUILD_INFO
 }
 
-QMAKE_CXXFLAGS_WARN_ON = -fdiagnostics-show-option -Wall -Wextra -Wformat -Wformat-security -Wno-unused-parameter -Wno-unused-local-typedefs -Wno-strict-aliasing -Wstack-protector -Wno-maybe-uninitialized
+QMAKE_CXXFLAGS_WARN_ON = -fdiagnostics-show-option -Wall -Wextra -Wformat -Wformat-security -Wno-unused-parameter -Wno-unused-local-typedefs -Wno-strict-aliasing -Wstack-protector -Wno-maybe-uninitialized -Wno-unknown-pragmas
 
 # Input
 DEPENDPATH += src src/json src/qt
