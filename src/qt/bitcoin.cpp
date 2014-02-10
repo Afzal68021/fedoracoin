@@ -24,6 +24,7 @@
 #include <QTimer>
 #include <QTranslator>
 #include <QLibraryInfo>
+#include <QBitmap>
 
 #ifdef Q_OS_MAC
 #include "macdockiconhandler.h"
@@ -91,7 +92,7 @@ static void InitMessage(const std::string &message)
 {
     if(splashref)
     {
-        splashref->showMessage(QString::fromStdString(message), Qt::AlignBottom|Qt::AlignHCenter, QColor(55,55,55));
+        splashref->showMessage(QString::fromStdString(message), Qt::AlignVCenter|Qt::AlignHCenter, QColor(55,55,55));
         qApp->processEvents();
     }
     printf("init message: %s\n", message.c_str());
@@ -216,6 +217,14 @@ int main(int argc, char *argv[])
     SplashScreen splash(QPixmap(), 0);
     if (GetBoolArg("-splash", true) && !GetBoolArg("-min"))
     {
+        QPixmap newPixmap;
+        if(GetBoolArg("-testnet")) {
+            newPixmap     = QPixmap(":/icons/bitcoin_testnet");
+        }
+        else {
+            newPixmap     = QPixmap(":/icons/bitcoin");
+        }
+        splash.setMask(newPixmap.mask());
         splash.show();
         splash.setAutoFillBackground(true);
         splashref = &splash;

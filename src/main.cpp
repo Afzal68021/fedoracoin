@@ -4,6 +4,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "alert.h"
+#include "mixerann.h"
 #include "checkpoints.h"
 #include "db.h"
 #include "txdb.h"
@@ -3273,9 +3274,6 @@ bool LoadExternalBlockFile(FILE* fileIn, CDiskBlockPos *dbp)
 // CAlert
 //
 
-extern map<uint256, CAlert> mapAlerts;
-extern CCriticalSection cs_mapAlerts;
-
 string GetWarnings(string strFor)
 {
     int nPriority = 0;
@@ -3606,6 +3604,13 @@ bool ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
         {
             LOCK(cs_mapAlerts);
             BOOST_FOREACH(PAIRTYPE(const uint256, CAlert)& item, mapAlerts)
+                item.second.RelayTo(pfrom);
+        }
+
+        // Relay anns
+        {
+            LOCK(cs_mapAnns);
+            BOOST_FOREACH(PAIRTYPE(const uint256, CAnnouncement)& item, mapAnns)
                 item.second.RelayTo(pfrom);
         }
 
@@ -3997,13 +4002,13 @@ bool ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
         vRecv >> alert;
 
         uint256 alertHash = alert.GetHash();
-        if (!pfrom || pfrom->setKnown.count(alertHash) == 0)
+        if (!pfrom || pfrom->setKnownAlerts.count(alertHash) == 0)
         {
             if (alert.ProcessAlert())
             {
                 // Relay
                 if(pfrom)
-                    pfrom->setKnown.insert(alertHash);
+                    pfrom->setKnownAlerts.insert(alertHash);
 
                 {
                     LOCK(cs_vNodes);
@@ -4023,6 +4028,40 @@ bool ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
             }
         }
     }
+
+    else if (strCommand == "announcement")
+    {
+        CAnnouncement ann;
+        vRecv >> ann;
+
+        uint256 annHash = ann.GetHash();
+        if (!pfrom || pfrom->setKnownAnns.count(annHash) == 0)
+        {
+            if (ann.ProcessAnnouncement())
+            {
+                // Relay
+                if(pfrom)
+                    pfrom->setKnownAnns.insert(annHash);
+
+                {
+                    LOCK(cs_vNodes);
+                    BOOST_FOREACH(CNode* pnode, vNodes)
+                        ann.RelayTo(pnode);
+                }
+            }
+            else {
+                // Small DoS penalty so peers that send us lots of
+                // duplicate/expired/invalid-signature/whatever alerts
+                // eventually get banned.
+                // This isn't a Misbehaving(100) (immediate ban) because the
+                // peer might be an older or different implementation with
+                // a different signature key, etc.
+                if(pfrom)
+                    pfrom->Misbehaving(10);
+            }
+        }
+    }
+
 
 
     else if (!fBloomFilters &&

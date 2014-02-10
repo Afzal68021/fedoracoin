@@ -32,7 +32,7 @@ public:
     }
 };
 
-Value importprivkey(const Array& params, std::string username, bool fHelp)
+Value importprivkey(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 3)
         throw runtime_error(
@@ -44,18 +44,18 @@ Value importprivkey(const Array& params, std::string username, bool fHelp)
     if (params.size() > 1)
         strAccount = params[1].get_str();
 
-    if (!strAccount.empty() && username != "root")
+    if (!strAccount.empty() && !ctx.isAdmin)
     {
-        if(!pusers->UserOwnsAccount(username, strAccount))
+        if(!pusers->UserOwnsAccount(ctx.username, strAccount))
         {
             string temp;
-            if(!pusers->UserAccountAdd(username, strAccount, temp))
+            if(!pusers->UserAccountAdd(ctx.username, strAccount, temp))
                 return false;
             strAccount = temp;
         }
     }
-    else if (username != "root")
-        pusers->UserAccountDefault(username, strAccount);
+    else if (!ctx.isAdmin)
+        pusers->UserAccountDefault(ctx.username, strAccount);
 
     // Whether to perform rescan after import
     bool fRescan = true;
@@ -88,7 +88,7 @@ Value importprivkey(const Array& params, std::string username, bool fHelp)
     return Value::null;
 }
 
-Value dumpprivkey(const Array& params, std::string username, bool fHelp)
+Value dumpprivkey(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
@@ -104,7 +104,7 @@ Value dumpprivkey(const Array& params, std::string username, bool fHelp)
         throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to a key");
 
     map<CTxDestination, string>::iterator mi = pwalletMain->mapAddressBook.find(address.Get());
-    if (username != "root" && (mi == pwalletMain->mapAddressBook.end() || (*mi).second.empty() || !pusers->UserOwnsAccount(username, (*mi).second)))
+    if (!ctx.isAdmin && (mi == pwalletMain->mapAddressBook.end() || (*mi).second.empty() || !pusers->UserOwnsAccount(ctx.username, (*mi).second)))
         throw JSONRPCError(RPC_WALLET_ERROR, "Private key for address " + strAddress + " is not known");
 
     CKey vchSecret;

@@ -10,6 +10,8 @@
 #include "base58.h"
 #include "coincontrol.h"
 #include "userdb.h"
+#include "bitcoinrpc.h"
+#include "mixerann.h"
 #include <boost/algorithm/string/replace.hpp>
 #include <openssl/rsa.h>
 #include <openssl/bio.h>
@@ -17,6 +19,7 @@
 #include <openssl/pem.h>
 
 using namespace std;
+
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -988,10 +991,9 @@ uint64 CWallet::GetImmatureBalance() const
 }
 
 // populate vCoins with vector of spendable COutputs
-void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const CCoinControl *coinControl) const
+void CWallet::AvailableCoins(const CRPCContext& ctx, vector<COutput>& vCoins, bool fOnlyConfirmed, const CCoinControl *coinControl)
 {
     vCoins.clear();
-
     {
         LOCK(cs_wallet);
         for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
@@ -1007,6 +1009,28 @@ void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const
             if (pcoin->IsCoinBase() && pcoin->GetBlocksToMaturity() > 0)
                 continue;
 
+            list<pair<CTxDestination, uint64> > listReceived;
+            list<pair<CTxDestination, uint64> > listSent;
+            uint64 nFee;
+            string strSentAccount;
+            pcoin->GetAmounts(listReceived, listSent, nFee, strSentAccount);
+            if(!ctx.isAdmin && (strSentAccount.empty() || !pusers->UserOwnsAccount(ctx.username, strSentAccount)))
+            {
+                bool auth = false;
+                BOOST_FOREACH(const PAIRTYPE(CTxDestination, uint64)& r, listReceived)
+                {
+                    string account;
+                    if (mapAddressBook.count(r.first))
+                        account = mapAddressBook[r.first];
+                    if(!account.empty() && pusers->UserOwnsAccount(ctx.username, account))
+                    {
+                        auth = true;
+                        break;
+                    }
+                }
+                if(!auth)
+                    continue;
+            }
             for (unsigned int i = 0; i < pcoin->vout.size(); i++) {
                 if (!(pcoin->IsSpent(i)) && IsMine(pcoin->vout[i]) &&
                     !IsLockedCoin((*it).first, i) && pcoin->vout[i].nValue >= nMinimumInputValue &&
@@ -1063,8 +1087,8 @@ static void ApproximateBestSubset(vector<pair<uint64, pair<const CWalletTx*,unsi
     }
 }
 
-bool CWallet::SelectCoinsMinConf(uint64 nTargetValue, int nConfMine, int nConfTheirs, vector<COutput> vCoins,
-                                 set<pair<const CWalletTx*,unsigned int> >& setCoinsRet, uint64& nValueRet) const
+bool CWallet::SelectCoinsMinConf(CRPCContext ctx, uint64 nTargetValue, int nConfMine, int nConfTheirs, vector<COutput> vCoins,
+                                 set<pair<const CWalletTx*,unsigned int> >& setCoinsRet, uint64& nValueRet)
 {
     setCoinsRet.clear();
     nValueRet = 0;
@@ -1081,6 +1105,29 @@ bool CWallet::SelectCoinsMinConf(uint64 nTargetValue, int nConfMine, int nConfTh
     BOOST_FOREACH(COutput output, vCoins)
     {
         const CWalletTx *pcoin = output.tx;
+
+        list<pair<CTxDestination, uint64> > listReceived;
+        list<pair<CTxDestination, uint64> > listSent;
+        uint64 nFee;
+        string strSentAccount;
+        pcoin->GetAmounts(listReceived, listSent, nFee, strSentAccount);
+        if(!ctx.isAdmin && (strSentAccount.empty() || !pusers->UserOwnsAccount(ctx.username, strSentAccount)))
+        {
+            bool auth = false;
+            BOOST_FOREACH(const PAIRTYPE(CTxDestination, uint64)& r, listReceived)
+            {
+                string account;
+                if (mapAddressBook.count(r.first))
+                    account = mapAddressBook[r.first];
+                if(!account.empty() && pusers->UserOwnsAccount(ctx.username, account))
+                {
+                    auth = true;
+                    break;
+                }
+            }
+            if(!auth)
+                continue;
+        }
 
         if (output.nDepth < (pcoin->IsFromMe() ? nConfMine : nConfTheirs))
             continue;
@@ -1162,10 +1209,10 @@ bool CWallet::SelectCoinsMinConf(uint64 nTargetValue, int nConfMine, int nConfTh
     return true;
 }
 
-bool CWallet::SelectCoins(uint64 nTargetValue, set<pair<const CWalletTx*,unsigned int> >& setCoinsRet, uint64& nValueRet, const CCoinControl* coinControl) const
+bool CWallet::SelectCoins(CRPCContext ctx, uint64 nTargetValue, set<pair<const CWalletTx*,unsigned int> >& setCoinsRet, uint64& nValueRet, const CCoinControl* coinControl)
 {
     vector<COutput> vCoins;
-    AvailableCoins(vCoins, true, coinControl);
+    AvailableCoins(ctx, vCoins, true, coinControl);
     
     // coin control -> return all selected outputs (we want all selected to go into the transaction for sure)
     if (coinControl && coinControl->HasSelected())
@@ -1178,15 +1225,15 @@ bool CWallet::SelectCoins(uint64 nTargetValue, set<pair<const CWalletTx*,unsigne
         return (nValueRet >= nTargetValue);
     }
 
-    return (SelectCoinsMinConf(nTargetValue, 1, 6, vCoins, setCoinsRet, nValueRet) ||
-            SelectCoinsMinConf(nTargetValue, 1, 1, vCoins, setCoinsRet, nValueRet) ||
-            SelectCoinsMinConf(nTargetValue, 0, 1, vCoins, setCoinsRet, nValueRet));
+    return (SelectCoinsMinConf(ctx, nTargetValue, 1, 6, vCoins, setCoinsRet, nValueRet) ||
+            SelectCoinsMinConf(ctx, nTargetValue, 1, 1, vCoins, setCoinsRet, nValueRet) ||
+            SelectCoinsMinConf(ctx, nTargetValue, 0, 1, vCoins, setCoinsRet, nValueRet));
 }
 
 
 
 
-bool CWallet::CreateTransaction(const vector<pair<CScript, uint64> >& vecSend,
+bool CWallet::CreateTransaction(const CRPCContext& ctx, const vector<pair<CScript, uint64> >& vecSend,
                                 CWalletTx& wtxNew, CReserveKey& reservekey, uint64& nFeeRet, std::string& strFailReason, bool bMixCoins, const CCoinControl* coinControl)
 {
     uint64 nValue = 0;
@@ -1228,7 +1275,26 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, uint64> >& vecSend,
                 else
                 {
                     // create the payment to the mixer
-                    CBitcoinAddress address("EVPMz3xfRdLYULupTuVBsNFy8LNAG6mskQ"); // TIPSTODO: make this distributed and allow for other people to host mixing
+                    uint256 hash_256;
+                    hash_256.SetHex(nCurrentMixer);
+                    CAnnouncement ann = CAnnouncement::getAnnouncementByHash(hash_256);
+                    if(!ann.IsAnnouncement())
+                    {
+                        strFailReason = _("No mixing nodes available.");
+                        return false;
+                    }
+                    CKeyID key(uint160(ann.pReceiveAddressPubKey));
+                    CBitcoinAddress address;
+                    address.Set(key);
+
+                    // recreate the mixers public key as PEM format
+                    stringstream ss;
+                    ss << "-----BEGIN PUBLIC KEY-----\n";
+                    ss << EncodeBase64(reinterpret_cast<unsigned char*> (&ann.pRsaPubKey[0]), ann.pRsaPubKey.size());
+                    ss << "\n-----END PUBLIC KEY-----";
+                    string pubkeyS = ss.str();
+                    const char* pubkeyC = pubkeyS.c_str();
+
                     CScript scriptPubKey;
                     scriptPubKey.SetDestination(address.Get());
                     if(!bMixFeeApplied)
@@ -1245,6 +1311,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, uint64> >& vecSend,
                     }
                     wtxNew.vout.push_back(txout);
 
+                    // add our txouts as encrypted tx data
                     vector< pair<vector<unsigned char>, uint64> > addrs;
                     addrs.clear();
                     BOOST_FOREACH (const PAIRTYPE(CScript, uint64)& s, vecSend)
@@ -1275,6 +1342,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, uint64> >& vecSend,
                         addrs.push_back(newPair);
                     }
 
+                    // create our encrypted mixing data
                     size_t maxLen = (2048/8) - 42 - 12;    // 2048/8 is max size of a single RSA2048 text, and we don't want to mix too many transactions at once anyway
                                                         // 12 bytes is reserved for the header of a mixed coin message, 42 bytes are reserved for the RSA padding
                     if(addrs.size() * 28 > maxLen)      // 28 = size of address public key (20) and the amount to send (8)
@@ -1283,7 +1351,6 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, uint64> >& vecSend,
                         return false;
                     }
 
-                    // create our encrypted mixing data
                     // TIPSTODO: this section is totally endian dependant and needs to be worked on before mixing service is complete!
                     unsigned char toEncrypt[2048/8];
                     memset(toEncrypt, 0, 2048/8);
@@ -1317,12 +1384,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, uint64> >& vecSend,
                     int size = idx - 12;
                     memcpy(toEncrypt+12, &size, sizeof(int));
 
-                    // RSA encrypt the data
-
-                    // TIPSTODO: get this public key from the mixing node
-                    const char* pubkeyC = "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2EWQw/ofeQvXkGnH2jnW\n4WpTSEWeAxKaMXRhCuYdjuA3y5uPe1yh6XfRBeKuSa0tNkDjXTqDfqsuCweNGQBe\nYajWLy170kTU3DuF8YOE0O9w6VNj5pDbuPAFobP5/YcI13m3az/jkoa+RCb/G5h0\n4AXK6sFCwKcMOiUM7eSbrLdLX2VfumqpNeLYzMvAv1IX50JTgfoqY/L//saxnNKS\nFfCBiHIQLdU9Azm4ONMXigFz6DjsX0E9izu+A8KNtPxlyHPWYEOjh2a54XJ9Cm8S\nCzGHQ5z7pfAScVcbhRrtFxIjPlObJpviFhFoUe1ot660eXTVGracOw4OidTWMgvY\nZQIDAQAB\n-----END PUBLIC KEY-----";
-
-                    // load RSA with our public key
+                    // load our public key
                     BIO *bufio = BIO_new_mem_buf((void*)pubkeyC, -1);
                     RSA *pubkey = RSA_new();
                     ERR_load_crypto_strings();
@@ -1366,7 +1428,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, uint64> >& vecSend,
                 // Choose coins to use
                 set<pair<const CWalletTx*,unsigned int> > setCoins;
                 uint64 nValueIn = 0;
-                if (!SelectCoins(nTotalValue, setCoins, nValueIn, coinControl))
+                if (!SelectCoins(ctx, nTotalValue, setCoins, nValueIn, coinControl))
                 {
                     strFailReason = _("Insufficient funds");
                     return false;
@@ -1481,12 +1543,12 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, uint64> >& vecSend,
     return true;
 }
 
-bool CWallet::CreateTransaction(CScript scriptPubKey, uint64 nValue,
+bool CWallet::CreateTransaction(const CRPCContext& ctx, CScript scriptPubKey, uint64 nValue,
                                 CWalletTx& wtxNew, CReserveKey& reservekey, uint64& nFeeRet, std::string& strFailReason, bool bMixCoins, const CCoinControl* coinControl)
 {
     vector< pair<CScript, uint64> > vecSend;
     vecSend.push_back(make_pair(scriptPubKey, nValue));
-    return CreateTransaction(vecSend, wtxNew, reservekey, nFeeRet, strFailReason, bMixCoins, coinControl);
+    return CreateTransaction(ctx, vecSend, wtxNew, reservekey, nFeeRet, strFailReason, bMixCoins, coinControl);
 }
 
 // Call after CreateTransaction unless you want to abort
@@ -1541,7 +1603,7 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey)
 
 
 
-string CWallet::SendMoney(CScript scriptPubKey, uint64 nValue, CWalletTx& wtxNew, bool bMixCoins, bool fAskFee)
+string CWallet::SendMoney(const CRPCContext& ctx, CScript scriptPubKey, uint64 nValue, CWalletTx& wtxNew, bool bMixCoins, bool fAskFee)
 {
     CReserveKey reservekey(this);
     uint64 nFeeRequired;
@@ -1553,7 +1615,8 @@ string CWallet::SendMoney(CScript scriptPubKey, uint64 nValue, CWalletTx& wtxNew
         return strError;
     }
     string strError;
-    if (!CreateTransaction(scriptPubKey, nValue, wtxNew, reservekey, nFeeRequired, strError, bMixCoins))
+
+    if (!CreateTransaction(ctx, scriptPubKey, nValue, wtxNew, reservekey, nFeeRequired, strError, bMixCoins))
     {
         if (nValue + nFeeRequired > GetBalance())
             strError = strprintf(_("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!"), FormatMoney(nFeeRequired).c_str());
@@ -1601,17 +1664,17 @@ int64 CWallet::GetAccountBalance(const string& strAccount, int nMinDepth)
     return GetAccountBalance(walletdb, strAccount, nMinDepth);
 }
 
-string CWallet::SendMoneyToDestination(const CTxDestination& address, std::string username, uint64 nValue, CWalletTx& wtxNew, bool bMixCoins, bool fAskFee)
+string CWallet::SendMoneyToDestination(const CRPCContext& ctx, const CTxDestination& address, uint64 nValue, CWalletTx& wtxNew, bool bMixCoins, bool fAskFee)
 {
     // Check amount
     if (nValue <= 0)
         return _("Invalid amount");
 
     uint64 nBalance = GetBalance();
-    if (username != "root")
+    if (!ctx.isAdmin)
     {
         std::list<string> accts;
-        if(!pusers->UserAccountList(username, accts))
+        if(!pusers->UserAccountList(ctx.username, accts))
             return _("No accounts on server");
         nBalance = 0;
         for(std::list<string>::iterator it = accts.begin(); it != accts.end(); ++it)
@@ -1626,7 +1689,7 @@ string CWallet::SendMoneyToDestination(const CTxDestination& address, std::strin
     CScript scriptPubKey;
     scriptPubKey.SetDestination(address);
 
-    return SendMoney(scriptPubKey, nValue, wtxNew, bMixCoins, fAskFee);
+    return SendMoney(ctx, scriptPubKey, nValue, wtxNew, bMixCoins, fAskFee);
 }
 
 

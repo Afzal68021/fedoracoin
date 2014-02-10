@@ -8,7 +8,8 @@
 #include "wallet.h"
 #include "walletdb.h" // for BackupWallet
 #include "base58.h"
-
+#include "bitcoinrpc.h"
+#include "mixerann.h"
 #include <QSet>
 #include <QTimer>
 
@@ -42,7 +43,9 @@ quint64 WalletModel::getBalance(const CCoinControl *coinControl) const
     {
         uint64 nBalance = 0;
         std::vector<COutput> vCoins;
-        wallet->AvailableCoins(vCoins, true, coinControl);
+        CRPCContext ctx;
+        ctx.isAdmin = true;
+        wallet->AvailableCoins(ctx, vCoins, true, coinControl);
         BOOST_FOREACH(const COutput& out, vCoins)
             nBalance += out.tx->vout[out.i].nValue;   
         
@@ -195,7 +198,9 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(const QList<SendCoinsRecipie
         CReserveKey keyChange(wallet);
         uint64 nFeeRequired = 0;
         std::string strFailReason;
-        bool fCreated = wallet->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, strFailReason, bMixCoins, coinControl);
+        CRPCContext ctx;
+        ctx.isAdmin = true;
+        bool fCreated = wallet->CreateTransaction(ctx, vecSend, wtx, keyChange, nFeeRequired, strFailReason, bMixCoins, coinControl);
 
         if(!fCreated)
         {
@@ -413,7 +418,9 @@ void WalletModel::getOutputs(const std::vector<COutPoint>& vOutpoints, std::vect
 void WalletModel::listCoins(std::map<QString, std::vector<COutput> >& mapCoins) const
 {
     std::vector<COutput> vCoins;
-    wallet->AvailableCoins(vCoins);
+    CRPCContext ctx;
+    ctx.isAdmin = true;
+    wallet->AvailableCoins(ctx, vCoins);
     
     std::vector<COutPoint> vLockedCoins;
     wallet->ListLockedCoins(vLockedCoins);

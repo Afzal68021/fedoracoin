@@ -277,7 +277,8 @@ HEADERS += src/qt/bitcoingui.h \
     src/limitedmap.h \
     src/qt/macnotificationhandler.h \
     src/qt/splashscreen.h \
-    src/userdb.h
+    src/userdb.h \
+    src/mixerann.h
 
 SOURCES += src/qt/bitcoin.cpp \
     src/qt/bitcoingui.cpp \
@@ -350,7 +351,8 @@ SOURCES += src/qt/bitcoin.cpp \
     src/txdb.cpp \
     src/qt/splashscreen.cpp \
     src/userdb.cpp \
-    src/rpcusers.cpp
+    src/rpcusers.cpp \
+    src/mixerann.cpp
 
 RESOURCES += src/qt/bitcoin.qrc
 

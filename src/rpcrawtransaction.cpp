@@ -121,7 +121,7 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, Object& entry)
     }
 }
 
-Value getrawtransaction(const Array& params, std::string username, bool fHelp)
+Value getrawtransaction(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
@@ -142,7 +142,7 @@ Value getrawtransaction(const Array& params, std::string username, bool fHelp)
     if (!GetTransaction(hash, tx, hashBlock, true))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available about transaction");
 
-    if(username != "root")
+    if(!ctx.isAdmin)
     {
         const CWalletTx& wtx = pwalletMain->mapWallet[hash];
         uint64 allFee;
@@ -150,7 +150,7 @@ Value getrawtransaction(const Array& params, std::string username, bool fHelp)
         list<pair<CTxDestination, uint64> > listReceived;
         list<pair<CTxDestination, uint64> > listSent;
         wtx.GetAmounts(listReceived, listSent, allFee, strSentAccount);
-        if(!pusers->UserOwnsAccount(username, strSentAccount))
+        if(!pusers->UserOwnsAccount(ctx.username, strSentAccount))
         {
             bool recv = false;
             // Received
@@ -158,7 +158,7 @@ Value getrawtransaction(const Array& params, std::string username, bool fHelp)
             {
                 BOOST_FOREACH(const PAIRTYPE(CTxDestination, uint64)& r, listReceived)
                 {
-                    if (pwalletMain->mapAddressBook.count(r.first) && pusers->UserOwnsAccount(username, pwalletMain->mapAddressBook[r.first]))
+                    if (pwalletMain->mapAddressBook.count(r.first) && pusers->UserOwnsAccount(ctx.username, pwalletMain->mapAddressBook[r.first]))
                     {
                         recv = true;
                         break;
@@ -182,7 +182,7 @@ Value getrawtransaction(const Array& params, std::string username, bool fHelp)
     return result;
 }
 
-Value listunspent(const Array& params, std::string username, bool fHelp)
+Value listunspent(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() > 3)
         throw runtime_error(
@@ -193,7 +193,7 @@ Value listunspent(const Array& params, std::string username, bool fHelp)
             "Results are an array of Objects, each of which has:\n"
             "{txid, vout, scriptPubKey, amount, confirmations}");
 
-    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+    if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     RPCTypeCheck(params, list_of(int_type)(int_type)(array_type));
 
@@ -223,7 +223,7 @@ Value listunspent(const Array& params, std::string username, bool fHelp)
     Array results;
     vector<COutput> vecOutputs;
     assert(pwalletMain != NULL);
-    pwalletMain->AvailableCoins(vecOutputs, false);
+    pwalletMain->AvailableCoins(ctx, vecOutputs, false);
     BOOST_FOREACH(const COutput& out, vecOutputs)
     {
         if (out.nDepth < nMinDepth || out.nDepth > nMaxDepth)
@@ -271,7 +271,7 @@ Value listunspent(const Array& params, std::string username, bool fHelp)
     return results;
 }
 
-Value createrawtransaction(const Array& params, std::string username, bool fHelp)
+Value createrawtransaction(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() != 2)
         throw runtime_error(
@@ -331,7 +331,7 @@ Value createrawtransaction(const Array& params, std::string username, bool fHelp
     return HexStr(ss.begin(), ss.end());
 }
 
-Value decoderawtransaction(const Array& params, std::string username, bool fHelp)
+Value decoderawtransaction(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
@@ -354,7 +354,7 @@ Value decoderawtransaction(const Array& params, std::string username, bool fHelp
     return result;
 }
 
-Value signrawtransaction(const Array& params, std::string username, bool fHelp)
+Value signrawtransaction(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 4)
         throw runtime_error(
@@ -371,7 +371,7 @@ Value signrawtransaction(const Array& params, std::string username, bool fHelp)
             "  complete : 1 if transaction has a complete set of signature (0 if not)"
             + HelpRequiringPassphrase());
 
-    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+    if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     RPCTypeCheck(params, list_of(str_type)(array_type)(array_type)(str_type), true);
 
@@ -547,14 +547,14 @@ Value signrawtransaction(const Array& params, std::string username, bool fHelp)
     return result;
 }
 
-Value sendrawtransaction(const Array& params, std::string username, bool fHelp)
+Value sendrawtransaction(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 1)
         throw runtime_error(
             "sendrawtransaction <hex string>\n"
             "Submits raw transaction (serialized, hex-encoded) to local node and network.");
 
-    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+    if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     // parse hex string from parameter
     vector<unsigned char> txData(ParseHexV(params[0], "parameter"));

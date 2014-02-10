@@ -1122,6 +1122,7 @@ bool AppInit2(boost::thread_group& threadGroup)
     // InitRPCMining is needed here so getwork/getblocktemplate in the GUI debug console works properly.
     InitRPCMining();
 
+    // TIPSTODO: make sure forcing everyone as RPC server will work
     StartRPCThreads();
 
     // Generate coins in the background

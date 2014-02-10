@@ -139,7 +139,7 @@ std::string HexBits(unsigned int nBits)
 /// Note: This interface may still be subject to change.
 ///
 
-string CRPCTable::help(string strCommand, string username) const
+string CRPCTable::help(string strCommand, const CRPCContext& ctx) const
 {
     string strRet;
     set<rpcfn_type> setDone;
@@ -154,7 +154,7 @@ string CRPCTable::help(string strCommand, string username) const
             continue;
         if (pcmd->reqWallet && !pwalletMain)
             continue;
-        if (pcmd->adminsOnly && username != "root")
+        if (!ctx.isAdmin && pcmd->adminsOnly)
             continue;
 
         try
@@ -162,7 +162,7 @@ string CRPCTable::help(string strCommand, string username) const
             Array params;
             rpcfn_type pfn = pcmd->actor;
             if (setDone.insert(pfn).second)
-                (*pfn)(params, username, true);
+                (*pfn)(params, ctx, true);
         }
         catch (std::exception& e)
         {
@@ -180,7 +180,7 @@ string CRPCTable::help(string strCommand, string username) const
     return strRet;
 }
 
-Value help(const Array& params, std::string username, bool fHelp)
+Value help(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() > 1)
         throw runtime_error(
@@ -191,11 +191,11 @@ Value help(const Array& params, std::string username, bool fHelp)
     if (params.size() > 0)
         strCommand = params[0].get_str();
 
-    return tableRPC.help(strCommand, username);
+    return tableRPC.help(strCommand, ctx);
 }
 
 
-Value stop(const Array& params, std::string username, bool fHelp)
+Value stop(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     // Accept the deprecated and ignored 'detach' boolean argument
     if (fHelp || params.size() > 1)
@@ -203,7 +203,7 @@ Value stop(const Array& params, std::string username, bool fHelp)
             "stop\n"
             "Stop FedoraCoin server.");
 
-    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+    if(!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     // Shutdown will take long enough that the response should get back
     StartShutdown();
@@ -299,6 +299,10 @@ static const CRPCCommand vRPCCommands[] =
     { "createalert",            &createalert,            true,      false,     false,    true  },
     { "signalert",              &signalert,              true,      false,     false,    true  },
     { "sendalert",              &sendalert,              true,      false,     false,    true  },
+    { "createann",              &createann,              true,      false,     false,    true  },
+    { "signann",                &signann,                true,      false,     false,    true  },
+    { "sendann",                &sendann,                true,      false,     false,    true  },
+    { "listann",                &listann,                true,      false,     false,    true  },
 };
 
 CRPCTable::CRPCTable()
@@ -527,11 +531,15 @@ int ReadHTTPMessage(std::basic_istream<char>& stream, map<string,
     return HTTP_OK;
 }
 
-string HTTPAuthorized(map<string, string>& mapHeaders)
+CRPCContext HTTPAuthorized(map<string, string>& mapHeaders)
 {
+    CRPCContext ctx;
+    ctx.isAuthed = false;
+    ctx.isAdmin = false;
+
     string strAuth = mapHeaders["authorization"];
     if (strAuth.substr(0,6) != "Basic ")
-        return "false";
+        return ctx;
     string strUserPass64 = strAuth.substr(6); boost::trim(strUserPass64);
     string strUserPass = DecodeBase64(strUserPass64);
     int idx = strUserPass.find_first_of(":");
@@ -541,9 +549,14 @@ string HTTPAuthorized(map<string, string>& mapHeaders)
         string pass = strUserPass.substr(idx+1, strUserPass.size());
 
         if(pusers->UserAuth(user, pass))
-            return user;
+        {
+            ctx.username = user;
+            ctx.isAuthed = true;
+            if(!pusers->root.empty() && user == pusers->root)
+               ctx.isAdmin = true;
+        }
     }
-    return "false";
+    return ctx;
 }
 
 //
@@ -960,7 +973,7 @@ void JSONRequest::parse(const Value& valRequest)
         throw JSONRPCError(RPC_INVALID_REQUEST, "Params must be an array");
 }
 
-static Object JSONRPCExecOne(const Value& req, string username)
+static Object JSONRPCExecOne(const Value& req, const CRPCContext& ctx)
 {
     Object rpc_result;
 
@@ -968,7 +981,7 @@ static Object JSONRPCExecOne(const Value& req, string username)
     try {
         jreq.parse(req);
 
-        Value result = tableRPC.execute(jreq.strMethod, jreq.params, username);
+        Value result = tableRPC.execute(jreq.strMethod, jreq.params, ctx);
         rpc_result = JSONRPCReplyObj(result, Value::null, jreq.id);
     }
     catch (Object& objError)
@@ -984,11 +997,11 @@ static Object JSONRPCExecOne(const Value& req, string username)
     return rpc_result;
 }
 
-static string JSONRPCExecBatch(const Array& vReq, string username)
+static string JSONRPCExecBatch(const Array& vReq, const CRPCContext& ctx)
 {
     Array ret;
     for (unsigned int reqIdx = 0; reqIdx < vReq.size(); reqIdx++)
-        ret.push_back(JSONRPCExecOne(vReq[reqIdx], username));
+        ret.push_back(JSONRPCExecOne(vReq[reqIdx], ctx));
 
     return write_string(Value(ret), false) + "\n";
 }
@@ -1026,8 +1039,8 @@ void ServiceConnection(AcceptedConnection *conn)
             conn->stream() << HTTPReply(HTTP_UNAUTHORIZED, "", false) << std::flush;
             break;
         }
-        string user = HTTPAuthorized(mapHeaders);
-        if (user == "false") // not authorized
+        CRPCContext ctx = HTTPAuthorized(mapHeaders);
+        if (!ctx.isAuthed) // not authorized
         {
             printf("ThreadRPCServer incorrect password attempt from %s\n", conn->peer_address_to_string().c_str());
             /* Deter brute-forcing short passwords.
@@ -1039,9 +1052,6 @@ void ServiceConnection(AcceptedConnection *conn)
             conn->stream() << HTTPReply(HTTP_UNAUTHORIZED, "", false) << std::flush;
             break;
         }
-        std::string rootuser = pusers->root;
-        if(!rootuser.empty() && user == rootuser)
-            user = "root";
 
         if (mapHeaders["connection"] == "close")
             fRun = false;
@@ -1060,14 +1070,14 @@ void ServiceConnection(AcceptedConnection *conn)
             if (valRequest.type() == obj_type) {
                 jreq.parse(valRequest);
 
-                Value result = tableRPC.execute(jreq.strMethod, jreq.params, user);
+                Value result = tableRPC.execute(jreq.strMethod, jreq.params, ctx);
 
                 // Send reply
                 strReply = JSONRPCReply(result, Value::null, jreq.id);
 
             // array of requests
             } else if (valRequest.type() == array_type)
-                strReply = JSONRPCExecBatch(valRequest.get_array(), user);
+                strReply = JSONRPCExecBatch(valRequest.get_array(), ctx);
             else
                 throw JSONRPCError(RPC_PARSE_ERROR, "Top-level object parse error");
 
@@ -1086,13 +1096,13 @@ void ServiceConnection(AcceptedConnection *conn)
     }
 }
 
-json_spirit::Value CRPCTable::execute(const std::string &strMethod, const json_spirit::Array &params, string username) const
+json_spirit::Value CRPCTable::execute(const std::string &strMethod, const json_spirit::Array &params, const CRPCContext& ctx) const
 {
     // Find method
     const CRPCCommand *pcmd = tableRPC[strMethod];
     if (!pcmd)
         throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found");
-    if (username != "root" && pcmd->adminsOnly)
+    if (!ctx.isAdmin && pcmd->adminsOnly)
         throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
     if (pcmd->reqWallet && !pwalletMain)
         throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (disabled)");
@@ -1109,13 +1119,13 @@ json_spirit::Value CRPCTable::execute(const std::string &strMethod, const json_s
         Value result;
         {
             if (pcmd->threadSafe)
-                result = pcmd->actor(params, username, false);
+                result = pcmd->actor(params, ctx, false);
             else if (!pwalletMain) {
                 LOCK(cs_main);
-                result = pcmd->actor(params, username, false);
+                result = pcmd->actor(params, ctx, false);
             } else {
                 LOCK2(cs_main, pwalletMain->cs_wallet);
-                result = pcmd->actor(params, username, false);
+                result = pcmd->actor(params, ctx, false);
             }
         }
         return result;
@@ -1235,6 +1245,12 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
     if (strMethod == "createalert"            && n > 6) ConvertTo<int>(params[6]);
     if (strMethod == "createalert"            && n > 7) ConvertTo<Array>(params[7]);
     if (strMethod == "createalert"            && n > 8) ConvertTo<int>(params[8]);
+    if (strMethod == "createann"              && n > 0) ConvertTo<boost::int64_t>(params[0]);
+    if (strMethod == "createann"              && n > 1) ConvertTo<int>(params[1]);
+    if (strMethod == "createann"              && n > 2) ConvertTo<Array>(params[2]);
+    if (strMethod == "createann"              && n > 3) ConvertTo<int>(params[3]);
+    if (strMethod == "createann"              && n > 4) ConvertTo<int>(params[4]);
+    if (strMethod == "createann"              && n > 5) ConvertTo<Array>(params[5]);
     if (strMethod == "getchainvalue"          && n > 0) ConvertTo<int>(params[0]);
     if (strMethod == "settxfee"               && n > 0) ConvertTo<double>(params[0]);
     if (strMethod == "setmininput"            && n > 0) ConvertTo<double>(params[0]);

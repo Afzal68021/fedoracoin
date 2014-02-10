@@ -22,6 +22,8 @@ class CReserveKey;
 class CAddress;
 class CInv;
 class CNode;
+class CAlert;
+class CAnnouncement;
 
 struct CBlockIndexWorkComparator;
 
@@ -76,6 +78,13 @@ extern CScript COINBASE_FLAGS;
 
 
 
+
+extern std::map<uint256, CAlert> mapAlerts;
+extern CCriticalSection cs_mapAlerts;
+
+extern std::map<uint256, CAnnouncement> mapAnns;
+extern CCriticalSection cs_mapAnns;
+extern std::string nCurrentMixer;
 
 extern uint64 GetChainValue(int nNumBlocks);
 extern CCriticalSection cs_main;

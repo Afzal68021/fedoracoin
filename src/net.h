@@ -223,7 +223,8 @@ public:
     std::vector<CAddress> vAddrToSend;
     std::set<CAddress> setAddrKnown;
     bool fGetAddr;
-    std::set<uint256> setKnown;
+    std::set<uint256> setKnownAlerts;
+    std::set<uint256> setKnownAnns;
 
     // inventory based relay
     mruset<CInv> setInventoryKnown;

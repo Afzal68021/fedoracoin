@@ -51,7 +51,7 @@ Value GetNetworkHashPS(int lookup, int height) {
     return (boost::int64_t)(workDiff.getdouble() / timeDiff);
 }
 
-Value getnetworkhashps(const Array& params, std::string username, bool fHelp)
+Value getnetworkhashps(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() > 2)
         throw runtime_error(
@@ -85,14 +85,14 @@ void ShutdownRPCMining()
     delete pMiningKey; pMiningKey = NULL;
 }
 
-Value getgenerate(const Array& params, std::string username, bool fHelp)
+Value getgenerate(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
             "getgenerate\n"
             "Returns true or false.");
 
-    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+    if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     if (!pMiningKey)
         return false;
@@ -101,7 +101,7 @@ Value getgenerate(const Array& params, std::string username, bool fHelp)
 }
 
 
-Value setgenerate(const Array& params, std::string username, bool fHelp)
+Value setgenerate(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
@@ -109,7 +109,7 @@ Value setgenerate(const Array& params, std::string username, bool fHelp)
             "<generate> is true or false to turn generation on or off.\n"
             "Generation is limited to [genproclimit] processors, -1 is unlimited.");
 
-    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+    if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     bool fGenerate = true;
     if (params.size() > 0)
@@ -130,14 +130,14 @@ Value setgenerate(const Array& params, std::string username, bool fHelp)
 }
 
 
-Value gethashespersec(const Array& params, std::string username, bool fHelp)
+Value gethashespersec(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
             "gethashespersec\n"
             "Returns a recent hashes per second performance measurement while generating.");
 
-    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+    if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     if (GetTimeMillis() - nHPSTimerStart > 8000)
         return (boost::int64_t)0;
@@ -145,7 +145,7 @@ Value gethashespersec(const Array& params, std::string username, bool fHelp)
 }
 
 
-Value getmininginfo(const Array& params, std::string username, bool fHelp)
+Value getmininginfo(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
@@ -157,21 +157,21 @@ Value getmininginfo(const Array& params, std::string username, bool fHelp)
     obj.push_back(Pair("currentblocksize",(uint64_t)nLastBlockSize));
     obj.push_back(Pair("currentblocktx",(uint64_t)nLastBlockTx));
     obj.push_back(Pair("difficulty",    (double)GetDifficulty()));
-    if(username == "root")
+    if(ctx.isAdmin)
     {
         obj.push_back(Pair("errors",        GetWarnings("statusbar")));
         obj.push_back(Pair("generate",      GetBoolArg("-gen")));
         obj.push_back(Pair("genproclimit",  (int)GetArg("-genproclimit", -1)));
-        obj.push_back(Pair("hashespersec",  gethashespersec(params, username, false)));
+        obj.push_back(Pair("hashespersec",  gethashespersec(params, ctx, false)));
     }
-    obj.push_back(Pair("networkhashps", getnetworkhashps(params, username, false)));
+    obj.push_back(Pair("networkhashps", getnetworkhashps(params, ctx, false)));
     obj.push_back(Pair("pooledtx",      (uint64_t)mempool.size()));
     obj.push_back(Pair("testnet",       fTestNet));
     return obj;
 }
 
 
-Value getworkex(const Array& params, std::string username, bool fHelp)
+Value getworkex(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() > 2)
         throw runtime_error(
@@ -307,7 +307,7 @@ Value getworkex(const Array& params, std::string username, bool fHelp)
 }
 
 
-Value getwork(const Array& params, std::string username, bool fHelp)
+Value getwork(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() > 1)
         throw runtime_error(
@@ -421,7 +421,7 @@ Value getwork(const Array& params, std::string username, bool fHelp)
 }
 
 
-Value getblocktemplate(const Array& params, std::string username, bool fHelp)
+Value getblocktemplate(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() > 1)
         throw runtime_error(
@@ -569,7 +569,7 @@ Value getblocktemplate(const Array& params, std::string username, bool fHelp)
     return result;
 }
 
-Value submitblock(const Array& params, std::string username, bool fHelp)
+Value submitblock(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(

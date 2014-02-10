@@ -129,7 +129,7 @@ bool CAlert::RelayTo(CNode* pnode) const
     if (!IsInEffect())
         return false;
     // returns true if wasn't already contained in the set
-    if (pnode->setKnown.insert(GetHash()).second)
+    if (pnode->setKnownAlerts.insert(GetHash()).second)
     {
         if (AppliesTo(pnode->nVersion, pnode->strSubVer) ||
             AppliesToMe() ||

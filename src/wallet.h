@@ -17,12 +17,14 @@
 #include "ui_interface.h"
 #include "util.h"
 #include "walletdb.h"
+#include "mixerann.h"
 
 class CAccountingEntry;
 class CWalletTx;
 class CReserveKey;
 class COutput;
 class CCoinControl;
+class CRPCContext;
 
 /** (client) version numbers for particular wallet features */
 enum WalletFeature
@@ -69,7 +71,7 @@ public:
 class CWallet : public CCryptoKeyStore
 {
 private:
-    bool SelectCoins(uint64 nTargetValue, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, uint64& nValueRet, const CCoinControl *coinControl=NULL) const;
+    bool SelectCoins(CRPCContext ctx, uint64 nTargetValue, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, uint64& nValueRet, const CCoinControl *coinControl=NULL);
 
     CWalletDB *pwalletdbEncryption;
 
@@ -125,8 +127,8 @@ public:
     // check whether we are allowed to upgrade (or already support) to the named feature
     bool CanSupportFeature(enum WalletFeature wf) { return nWalletMaxVersion >= wf; }
 
-    void AvailableCoins(std::vector<COutput>& vCoins, bool fOnlyConfirmed=true, const CCoinControl *coinControl=NULL) const;
-    bool SelectCoinsMinConf(uint64 nTargetValue, int nConfMine, int nConfTheirs, std::vector<COutput> vCoins, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, uint64& nValueRet) const;
+    void AvailableCoins(const CRPCContext& ctx, std::vector<COutput>& vCoins, bool fOnlyConfirmed=true, const CCoinControl *coinControl=NULL);
+    bool SelectCoinsMinConf(const CRPCContext ctx, uint64 nTargetValue, int nConfMine, int nConfTheirs, std::vector<COutput> vCoins, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, uint64& nValueRet);
     bool IsLockedCoin(uint256 hash, unsigned int n) const;
     void LockCoin(COutPoint& output);
     void UnlockCoin(COutPoint& output);
@@ -179,13 +181,13 @@ public:
     uint64 GetBalance() const;
     uint64 GetUnconfirmedBalance() const;
     uint64 GetImmatureBalance() const;
-    bool CreateTransaction(const std::vector<std::pair<CScript, uint64> >& vecSend,
+    bool CreateTransaction(const CRPCContext& ctx, const std::vector<std::pair<CScript, uint64> >& vecSend,
                            CWalletTx& wtxNew, CReserveKey& reservekey, uint64& nFeeRet, std::string& strFailReason, bool bMixCoins, const CCoinControl *coinControl=NULL);
-    bool CreateTransaction(CScript scriptPubKey, uint64 nValue,
+    bool CreateTransaction(const CRPCContext& ctx, CScript scriptPubKey, uint64 nValue,
                            CWalletTx& wtxNew, CReserveKey& reservekey, uint64& nFeeRet, std::string& strFailReason, bool bMixCoins, const CCoinControl *coinControl=NULL);
     bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey);
-    std::string SendMoney(CScript scriptPubKey, uint64 nValue, CWalletTx& wtxNew, bool bMixCoins, bool fAskFee=false);
-    std::string SendMoneyToDestination(const CTxDestination &address, std::string username, uint64 nValue, CWalletTx& wtxNew, bool bMixCoins, bool fAskFee=false);
+    std::string SendMoney(const CRPCContext& ctx, CScript scriptPubKey, uint64 nValue, CWalletTx& wtxNew, bool bMixCoins, bool fAskFee=false);
+    std::string SendMoneyToDestination(const CRPCContext& ctx, const CTxDestination &address, uint64 nValue, CWalletTx& wtxNew, bool bMixCoins, bool fAskFee=false);
     int64 GetAccountBalance(CWalletDB& walletdb, const std::string& strAccount, int nMinDepth);
     int64 GetAccountBalance(const std::string& strAccount, int nMinDepth);
     bool NewKeyPool();

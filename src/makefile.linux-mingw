@@ -59,6 +59,7 @@ HEADERS = $(wildcard *.h)
 OBJS= \
     leveldb/libleveldb.a \
     obj/alert.o \
+    obj/mixerann.o \
     obj/version.o \
     obj/checkpoints.o \
     obj/netbase.o \

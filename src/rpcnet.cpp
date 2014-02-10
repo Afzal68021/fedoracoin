@@ -8,14 +8,14 @@
 using namespace json_spirit;
 using namespace std;
 
-Value getconnectioncount(const Array& params, std::string username, bool fHelp)
+Value getconnectioncount(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
             "getconnectioncount\n"
             "Returns the number of connections to other nodes.");
 
-    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+    if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     LOCK(cs_vNodes);
     return (int)vNodes.size();
@@ -34,14 +34,14 @@ static void CopyNodeStats(std::vector<CNodeStats>& vstats)
     }
 }
 
-Value getpeerinfo(const Array& params, std::string username, bool fHelp)
+Value getpeerinfo(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
             "getpeerinfo\n"
             "Returns data about each connected network node.");
 
-    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+    if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     vector<CNodeStats> vstats;
     CopyNodeStats(vstats);
@@ -76,7 +76,7 @@ Value getpeerinfo(const Array& params, std::string username, bool fHelp)
     return ret;
 }
 
-Value addnode(const Array& params, std::string username, bool fHelp)
+Value addnode(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     string strCommand;
     if (params.size() == 2)
@@ -87,7 +87,7 @@ Value addnode(const Array& params, std::string username, bool fHelp)
             "addnode <node> <add|remove|onetry>\n"
             "Attempts add or remove <node> from the addnode list or try a connection to <node> once.");
 
-    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+    if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     string strNode = params[0].get_str();
 
@@ -120,7 +120,7 @@ Value addnode(const Array& params, std::string username, bool fHelp)
     return Value::null;
 }
 
-Value getaddednodeinfo(const Array& params, std::string username, bool fHelp)
+Value getaddednodeinfo(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
@@ -131,7 +131,7 @@ Value getaddednodeinfo(const Array& params, std::string username, bool fHelp)
             "otherwise connected information will also be available.");
 
 
-    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+    if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     bool fDns = params[0].get_bool();
 

@@ -6,6 +6,8 @@
 #include "main.h"
 #include "bitcoinrpc.h"
 #include "alert.h"
+#include "mixerann.h"
+#include "base58.h"
 
 using namespace json_spirit;
 using namespace std;
@@ -71,14 +73,14 @@ Object blockToJSON(const CBlock& block, const CBlockIndex* blockindex)
     return result;
 }
 
-Value sendalert(const Array& params, std::string username, bool fHelp)
+Value sendalert(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || (params.size() != 1))
             throw runtime_error(
                 "sendalert <alertdata>\n"
                 "Verifies the alert signature and sends to all connected peers.");
 
-    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+    if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     CAlert alert;
     vector<unsigned char> msgData(ParseHexV(params[0], "argument"));
@@ -93,14 +95,14 @@ Value sendalert(const Array& params, std::string username, bool fHelp)
     return true;
 }
 
-Value signalert(const Array& params, std::string username, bool fHelp)
+Value signalert(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || (params.size() != 2))
         throw runtime_error(
             "signalert <alertdata> <privatekey>\n"
             "Signs the alert data with the private key.");
 
-    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+    if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     CAlert alert;
     vector<unsigned char> msgData(ParseHexV(params[0], "argument"));
@@ -125,14 +127,14 @@ Value signalert(const Array& params, std::string username, bool fHelp)
     }
     return false;
 }
-Value createalert(const Array& params, std::string username, bool fHelp)
+Value createalert(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || (params.size() < 11 || params.size() > 12))
         throw runtime_error(
             "createalert <relayuntil> <expiration> <id> <cancelupto> <ids to cancel eg [1,2]> <minprotocolver> <maxprotocolvar> <versions alert applies to eg [\"/Euphoria:1.0.6.0/\",\"/Euphoria:1.0.6.5/\"]> <priority> <comment> <statusbar> [reserved]\n"
             "Creates alert data for the given parameters.");
 
-    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+    if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     CUnsignedAlert alert;
     alert.SetNull();
@@ -167,7 +169,135 @@ Value createalert(const Array& params, std::string username, bool fHelp)
     return HexStr(ssTx.begin(), ssTx.end());
 }
 
-Value getchainvalue(const Array& params, std::string username, bool fHelp)
+Value sendann(const Array& params, const CRPCContext& ctx, bool fHelp)
+{
+    if (fHelp || (params.size() != 1))
+            throw runtime_error(
+                "sendann <anndata>\n"
+                "Verifies the announcement signature and sends to all connected peers.");
+
+    if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+
+    CAnnouncement ann;
+    vector<unsigned char> msgData(ParseHexV(params[0], "argument"));
+    CDataStream vRecv(msgData, SER_NETWORK, PROTOCOL_VERSION);
+    vRecv >> ann;
+    CDataStream vRecv2(msgData, SER_NETWORK, PROTOCOL_VERSION);
+
+    if(ann.CheckSignature())
+        ProcessMessage(NULL, "announcement", vRecv2);
+    else
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid signature on announcement, not sending");
+    return true;
+}
+
+Value signann(const Array& params, const CRPCContext& ctx, bool fHelp)
+{
+    if (fHelp || (params.size() != 2))
+        throw runtime_error(
+            "signann <alertdata> <privatekey>\n"
+            "Signs the announcement data with the private key.");
+
+    if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+
+    CAnnouncement ann;
+    vector<unsigned char> msgData(ParseHexV(params[0], "argument"));
+    vector<unsigned char> keyData(ParseHexV(params[1], "argument"));
+    ann.vchMsg = msgData;
+
+    CPrivKey key;
+    key.reserve(keyData.size());
+    copy(keyData.begin(),keyData.end(),back_inserter(key));
+
+    CKey key2;
+    key2.SetPrivKey(key, false);
+    if(!key2.Sign(ann.GetHash(), ann.vchSig))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Sign failed, invalid key?");
+
+    if(ann.CheckSignature())
+    {
+        CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
+        ssTx << ann;
+
+        return HexStr(ssTx.begin(), ssTx.end());
+    }
+    return false;
+}
+Value createann(const Array& params, const CRPCContext& ctx, bool fHelp)
+{
+    if (fHelp || (params.size() != 9))
+        throw runtime_error(
+            "createann <expiration> <id> <ids to revoke eg [1,2]> <minprotocolver> <maxprotocolvar> <versions alert applies to eg [\"/Euphoria:1.0.6.0/\",\"/Euphoria:1.0.6.5/\"]> <hex:recvPubKey> <hex:sendPubKey> <hex:rsaPubKey>\n"
+            "Creates alert data for the given parameters.");
+
+    if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+
+    CUnsignedAnnouncement ann;
+    ann.SetNull();
+
+    ann.nExpiration = params[0].get_int64();
+    ann.nID = params[1].get_int();
+    Array setRevokes = params[2].get_array();
+    BOOST_FOREACH(const Value& cid, setRevokes)
+    {
+        ann.setRevoke.insert(cid.get_int());
+    }
+    ann.nMinVer = params[3].get_int();
+    ann.nMaxVer = params[4].get_int();
+    Array setSubVer = params[5].get_array();
+    BOOST_FOREACH(const Value& cid, setSubVer)
+    {
+        ann.setSubVer.insert(cid.get_str());
+    }
+
+    vector<unsigned char> recv(ParseHexV(params[6], "argument"));
+    vector<unsigned char> send(ParseHexV(params[7], "argument"));
+    vector<unsigned char> rsa(ParseHexV(params[8], "argument"));
+    ann.pReceiveAddressPubKey = recv;
+    ann.pSendAddressPubKey = send;
+    ann.pRsaPubKey = rsa;
+
+    CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
+    ssTx << ann;
+    return HexStr(ssTx.begin(), ssTx.end());
+}
+
+Value listann(const Array& params, const CRPCContext& ctx, bool fHelp)
+{
+    if (fHelp || (params.size() != 0))
+        throw runtime_error(
+            "listann\n"
+            "Lists active mixer announcements on this node.");
+
+    if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+
+    CKeyID key(uint160("70160ae4613341dfb86c6c5490dbb886fbc3ccc0"));
+    CBitcoinAddress address;
+    address.Set(key);
+    CKeyID key2;
+    address.GetKeyID(key2);
+
+    //strFailReason = address.ToString();
+    //return false;
+
+    std::stringstream ss;
+    ss << "Current: " << nCurrentMixer << "\r\n\r\n";
+    {
+        LOCK(cs_mapAnns);
+        for (map<uint256, CAnnouncement>::iterator mi = mapAnns.begin(); mi != mapAnns.end(); mi++)
+        {
+            const CAnnouncement& ann = (*mi).second;
+            ss << "========\r\n";
+            ss << (*mi).first.GetHex();
+            ss << "\r\n========\r\n";
+            ss << ann.ToString();
+            ss << "\r\n\r\n";
+        }
+    }
+    return ss.str();
+}
+
+Value getchainvalue(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || (params.size() != 0 && params.size() != 1))
         throw runtime_error(
@@ -180,7 +310,7 @@ Value getchainvalue(const Array& params, std::string username, bool fHelp)
 
     return ValueFromAmount(GetChainValue(nHeight));
 }
-Value getblockcount(const Array& params, std::string username, bool fHelp)
+Value getblockcount(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
@@ -190,7 +320,7 @@ Value getblockcount(const Array& params, std::string username, bool fHelp)
     return nBestHeight;
 }
 
-Value getbestblockhash(const Array& params, std::string username, bool fHelp)
+Value getbestblockhash(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
@@ -200,7 +330,7 @@ Value getbestblockhash(const Array& params, std::string username, bool fHelp)
     return hashBestChain.GetHex();
 }
 
-Value getdifficulty(const Array& params, std::string username, bool fHelp)
+Value getdifficulty(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
@@ -211,14 +341,14 @@ Value getdifficulty(const Array& params, std::string username, bool fHelp)
 }
 
 
-Value settxfee(const Array& params, std::string username, bool fHelp)
+Value settxfee(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 1)
         throw runtime_error(
             "settxfee <amount>\n"
             "<amount> is a real and is rounded to the nearest 0.00000001.");
 
-    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+    if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     // Amount
     int64 nAmount = 0;
@@ -229,14 +359,14 @@ Value settxfee(const Array& params, std::string username, bool fHelp)
     return true;
 }
 
-Value getrawmempool(const Array& params, std::string username, bool fHelp)
+Value getrawmempool(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
             "getrawmempool\n"
             "Returns all transaction ids in memory pool.");
 
-    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+    if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     vector<uint256> vtxid;
     mempool.queryHashes(vtxid);
@@ -248,7 +378,7 @@ Value getrawmempool(const Array& params, std::string username, bool fHelp)
     return a;
 }
 
-Value getblockhash(const Array& params, std::string username, bool fHelp)
+Value getblockhash(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
@@ -263,7 +393,7 @@ Value getblockhash(const Array& params, std::string username, bool fHelp)
     return pblockindex->phashBlock->GetHex();
 }
 
-Value getblock(const Array& params, std::string username, bool fHelp)
+Value getblock(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
@@ -297,14 +427,14 @@ Value getblock(const Array& params, std::string username, bool fHelp)
     return blockToJSON(block, pblockindex);
 }
 
-Value gettxoutsetinfo(const Array& params, std::string username, bool fHelp)
+Value gettxoutsetinfo(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
             "gettxoutsetinfo\n"
             "Returns statistics about the unspent transaction output set.");
 
-    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+    if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     Object ret;
 
@@ -321,14 +451,14 @@ Value gettxoutsetinfo(const Array& params, std::string username, bool fHelp)
     return ret;
 }
 
-Value gettxout(const Array& params, std::string username, bool fHelp)
+Value gettxout(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 3)
         throw runtime_error(
             "gettxout <txid> <n> [includemempool=true]\n"
             "Returns details about an unspent transaction output.");
 
-    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+    if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     Object ret;
 
@@ -368,14 +498,14 @@ Value gettxout(const Array& params, std::string username, bool fHelp)
     return ret;
 }
 
-Value verifychain(const Array& params, std::string username, bool fHelp)
+Value verifychain(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
     if (fHelp || params.size() > 2)
         throw runtime_error(
             "verifychain [check level] [num blocks]\n"
             "Verifies blockchain database.");
 
-    if(username != "root") throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+    if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     int nCheckLevel = GetArg("-checklevel", 3);
     int nCheckDepth = GetArg("-checkblocks", 288);
