@@ -1301,8 +1301,8 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, uint64> >& vecSend,
                     }
 
                     // create our encrypted mixing data
-                    size_t maxLen = (2048/8) - 42 - 12;    // 2048/8 is max size of a single RSA2048 text, and we don't want to mix too many transactions at once anyway
-                                                        // 12 bytes is reserved for the header of a mixed coin message, 42 bytes are reserved for the RSA padding
+                    size_t maxLen = (2048/8) - 42 - 16;    // 2048/8 is max size of a single RSA2048 text, and we don't want to mix too many transactions at once anyway
+                                                        // 16 bytes is reserved for the header of the mixed coin message, 42 bytes are reserved for the RSA padding
                     if(addrs.size() * 28 > maxLen)      // 28 = size of address public key (20) and the amount to send (8)
                     {
                         strFailReason = _("Too many destinations for mixed coins.");
@@ -1318,7 +1318,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, uint64> >& vecSend,
 
 
 
-                    int idx = 12; // leave 4 bytes to store the size
+                    int idx = 16; // leave 4 bytes to store the size
 
                     // full tx data with random bytes
                     srand(time(NULL));
@@ -1339,7 +1339,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, uint64> >& vecSend,
                         idx += addr.first.size();
                     }
 
-                    int size = idx - 12;
+                    int size = idx - 16;
                     memcpy(toEncrypt+12, &size, sizeof(int));
 
                     // load our public key
