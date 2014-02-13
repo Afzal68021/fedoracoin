@@ -145,7 +145,6 @@ extern const CRPCTable tableRPC;
 extern void InitRPCMining();
 extern void ShutdownRPCMining();
 
-extern int64 nWalletUnlockTime;
 extern int64 AmountFromValue(const json_spirit::Value& value);
 extern json_spirit::Value ValueFromAmount(int64 amount);
 extern json_spirit::Value ValueFromAmount(uint64 amount);

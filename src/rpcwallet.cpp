@@ -20,8 +20,6 @@ using namespace boost;
 using namespace boost::assign;
 using namespace json_spirit;
 
-int64 nWalletUnlockTime;
-static CCriticalSection cs_nWalletUnlockTime;
 
 std::string HelpRequiringPassphrase(const CRPCContext& ctx)
 {
@@ -102,7 +100,7 @@ Value getinfo(const Array& params, const CRPCContext& ctx, bool fHelp)
         obj.push_back(Pair("keypoololdest", (boost::int64_t)ctx.wallet->GetOldestKeyPoolTime()));
         obj.push_back(Pair("keypoolsize",   (int)ctx.wallet->GetKeyPoolSize()));
         if (ctx.wallet->IsCrypted())
-            obj.push_back(Pair("unlocked_until", (boost::int64_t)nWalletUnlockTime));
+            obj.push_back(Pair("unlocked_until", (boost::int64_t)ctx.wallet->nWalletUnlockTime));
     }
     if (ctx.isAdmin)
     {
@@ -1347,39 +1345,42 @@ void ThreadCleanWalletPassphrase(const void* parg1, void* parg2)
 
     int64 nMyWakeTime = GetTimeMillis() + *((int64*)parg2) * 1000;
 
-    ENTER_CRITICAL_SECTION(cs_nWalletUnlockTime);
+    const CRPCContext* ctx = (const CRPCContext*)parg1;
 
-    if (nWalletUnlockTime == 0)
+    ENTER_CRITICAL_SECTION(ctx->wallet->cs_nWalletUnlockTime);
+
+    if (ctx->wallet->nWalletUnlockTime == 0)
     {
-        nWalletUnlockTime = nMyWakeTime;
+        ctx->wallet->nWalletUnlockTime = nMyWakeTime;
 
         do
         {
-            if (nWalletUnlockTime==0)
+            if (ctx->wallet->nWalletUnlockTime==0)
                 break;
-            int64 nToSleep = nWalletUnlockTime - GetTimeMillis();
+            int64 nToSleep = ctx->wallet->nWalletUnlockTime - GetTimeMillis();
             if (nToSleep <= 0)
                 break;
 
-            LEAVE_CRITICAL_SECTION(cs_nWalletUnlockTime);
+            LEAVE_CRITICAL_SECTION(ctx->wallet->cs_nWalletUnlockTime);
             MilliSleep(nToSleep);
-            ENTER_CRITICAL_SECTION(cs_nWalletUnlockTime);
+            ENTER_CRITICAL_SECTION(ctx->wallet->cs_nWalletUnlockTime);
 
         } while(1);
 
-        if (nWalletUnlockTime)
+        if (ctx->wallet->nWalletUnlockTime)
         {
-            nWalletUnlockTime = 0;
-            ((const CRPCContext*)parg1)->wallet->Lock();
+            ctx->wallet->nWalletUnlockTime = 0;
+            ctx->wallet->Lock();
         }
     }
     else
     {
-        if (nWalletUnlockTime < nMyWakeTime)
-            nWalletUnlockTime = nMyWakeTime;
+        if (ctx->wallet->nWalletUnlockTime < nMyWakeTime)
+            ctx->wallet->nWalletUnlockTime = nMyWakeTime;
     }
 
-    LEAVE_CRITICAL_SECTION(cs_nWalletUnlockTime);
+    LEAVE_CRITICAL_SECTION(ctx->wallet->cs_nWalletUnlockTime);
+
 
     delete (int64*)parg2;
 }
@@ -1473,9 +1474,9 @@ Value walletlock(const Array& params, const CRPCContext& ctx, bool fHelp)
     if (!ctx.wallet->IsCrypted())
         throw JSONRPCError(RPC_WALLET_WRONG_ENC_STATE, "Error: running with an unencrypted wallet, but walletlock was called.");
     {
-        LOCK(cs_nWalletUnlockTime);
+        LOCK(ctx.wallet->cs_nWalletUnlockTime);
         ctx.wallet->Lock();
-        nWalletUnlockTime = 0;
+        ctx.wallet->nWalletUnlockTime = 0;
     }
 
     return Value::null;
