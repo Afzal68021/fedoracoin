@@ -1238,7 +1238,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, uint64> >& vecSend,
                     CAnnouncement ann = CAnnouncement::getAnnouncementByHash(hash_256);
                     if (!ann.IsAnnouncement())
                     {
-                        strFailReason = _("No mixing nodes available.");
+                        strFailReason = _("No mixing nodes are currently available.");
                         return false;
                     }
                     CKeyID key(uint160(ann.pReceiveAddressPubKey));
@@ -1246,13 +1246,30 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, uint64> >& vecSend,
                     address.Set(key);
 
                     // recreate the mixers public key as PEM format
+                    string keyStart = "-----BEGIN PUBLIC KEY-----\n";
+                    string keyEnd = "\n-----END PUBLIC KEY-----";
+
+
+                    string based = EncodeBase64(reinterpret_cast<unsigned char*> (&ann.pRsaPubKey[0]), ann.pRsaPubKey.size());
+                    int len = based.size();
+                    int linecount = len / 64;
+                    string newbased;
+                    for(int l = 0; l < linecount; l++)
+                    {
+                        newbased += based.substr(l * 64, 64);
+                        newbased += "\n";
+                    }
+                    newbased += based.substr(linecount * 64, len - (linecount * 64));
+
                     stringstream ss;
-                    ss << "-----BEGIN PUBLIC KEY-----\n";
-                    ss << EncodeBase64(reinterpret_cast<unsigned char*> (&ann.pRsaPubKey[0]), ann.pRsaPubKey.size());
-                    ss << "\n-----END PUBLIC KEY-----";
+                    ss << keyStart;
+                    ss << newbased;
+                    ss << keyEnd;
                     string pubkeyS = ss.str();
                     const char* pubkeyC = pubkeyS.c_str();
-
+                    FILE* filer = fopen("C:\\pub.txt", "w+");
+                    fwrite(pubkeyC, strlen(pubkeyC), 1, filer);
+                    fclose(filer);
                     CScript scriptPubKey;
                     scriptPubKey.SetDestination(address.Get());
                     if (!bMixFeeApplied)
@@ -1350,7 +1367,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, uint64> >& vecSend,
                     pubkey = PEM_read_bio_RSA_PUBKEY(bufio, &pubkey, NULL, NULL);
                     if ( !pubkey )
                     {
-                        strFailReason = _("Error with mixer node encrypting mixed transaction: ") + _(ERR_error_string(ERR_get_error(), err));
+                        strFailReason = _("Error during transaction encryption: ") + _(ERR_error_string(ERR_get_error(), err));
                         return false;
                     }
                     BIO_free(bufio);
