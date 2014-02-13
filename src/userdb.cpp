@@ -22,14 +22,14 @@ bool CUserDB::ReadLastUserIndex(int& bLastIdx)
 {
     LOCK(cs_userCount);
     int defaultidx = 0;
-    if(!Read('U', bLastIdx))
+    if (!Read('U', bLastIdx))
         Write('U', defaultidx);
     return Read('U', bLastIdx);
 }
 
 bool CUserDB::UserExists(string username)
 {
-    if(username == "root" || username == "false") return true;
+    if (username == "root" || username == "false") return true;
     uint256 pass_hash("0x0");
     return Read("U:" + username, pass_hash) && pass_hash != uint256("0x0");
 }
@@ -37,7 +37,7 @@ bool CUserDB::UserExists(string username)
 bool CUserDB::RootAccountExists()
 {
     std::string owner;
-    if(Read(string("ROOT"), owner) && !owner.empty())
+    if (Read(string("ROOT"), owner) && !owner.empty())
     {
         this->root = owner;
         return true;
@@ -50,7 +50,7 @@ bool CUserDB::RootAccountSet(string username)
     string user = username;
     std::transform(user.begin(), user.end(), user.begin(), ::tolower);
     bool w = Write(string("ROOT"), user);
-    if(w) this->root = user;
+    if (w) this->root = user;
     return w;
 }
 
@@ -58,7 +58,7 @@ bool CUserDB::RootAccountGet(string &username)
 {
     string rot;
     bool r = Read(string("ROOT"), rot);
-    if(r) username = rot;
+    if (r) username = rot;
     return r;
 }
 
@@ -66,7 +66,7 @@ bool CUserDB::UserAdd(string username, const SecureString& password)
 {
     string user = username;
     std::transform(user.begin(), user.end(), user.begin(), ::tolower);
-    if(this->UserExists(user)) return false;
+    if (this->UserExists(user)) return false;
 
     // generate a salt for the user
     unsigned char rand_pwd[32];
@@ -83,12 +83,12 @@ bool CUserDB::UserAdd(string username, const SecureString& password)
     CRPCContext ctx;
     ctx.username = username;
     CWallet* userWallet = CWallet::GetUserWallet(ctx, NULL);
-    if(userWallet && !userWallet->IsCrypted() && userWallet != pwalletMain)
+    if (userWallet && !userWallet->IsCrypted() && userWallet != pwalletMain)
         userWallet->EncryptWallet(password);
 
     // set the user and user salt in the database
     // also set our root user if it hasn't been set before
-    if(userWallet && Write("U:" + user, pass_hash) && Write("US:" + user, salt) && (!this->RootAccountExists() ? this->RootAccountSet(user) : true))
+    if (userWallet && Write("U:" + user, pass_hash) && Write("US:" + user, salt) && (!this->RootAccountExists() ? this->RootAccountSet(user) : true))
     {
         int last = 0;
         this->ReadLastUserIndex(last);
@@ -102,10 +102,10 @@ bool CUserDB::UserUpdate(string username, const SecureString& password)
 {
     string user = username;
     std::transform(user.begin(), user.end(), user.begin(), ::tolower);
-    if(user == "root" || user == "false") return false;
-    if(!this->UserExists(user)) return false;
+    if (user == "root" || user == "false") return false;
+    if (!this->UserExists(user)) return false;
     string salt;
-    if(!Read("US:" + user, salt)) return false;
+    if (!Read("US:" + user, salt)) return false;
 
     CDataStream ds(SER_NETWORK, 0);
     ds << Hash(password.begin(), password.end());
@@ -120,10 +120,10 @@ bool CUserDB::UserAuth(string username, const SecureString& password)
     string user = username;
     std::transform(user.begin(), user.end(), user.begin(), ::tolower);
 
-    if(user == "root" || user == "false") return false;
+    if (user == "root" || user == "false") return false;
     uint256 pass_hash("0x0");
     string salt;
-    if(!Read("U:" + user, pass_hash) || !Read("US:" + user, salt) || pass_hash == uint256("0x0")) return false;
+    if (!Read("U:" + user, pass_hash) || !Read("US:" + user, salt) || pass_hash == uint256("0x0")) return false;
     CDataStream ds(SER_NETWORK, 0);
     ds << Hash(password.begin(), password.end());
     ds << Hash(salt.begin(), salt.end());

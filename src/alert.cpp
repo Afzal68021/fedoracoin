@@ -160,7 +160,7 @@ CAlert CAlert::getAlertByHash(const uint256 &hash)
     {
         LOCK(cs_mapAlerts);
         map<uint256, CAlert>::iterator mi = mapAlerts.find(hash);
-        if(mi != mapAlerts.end())
+        if (mi != mapAlerts.end())
             retval = mi->second;
     }
     return retval;
@@ -231,7 +231,7 @@ bool CAlert::ProcessAlert(bool fThread)
         // Add to mapAlerts
         mapAlerts.insert(make_pair(GetHash(), *this));
         // Notify UI and -alertnotify if it applies to me
-        if(AppliesToMe())
+        if (AppliesToMe())
         {
             uiInterface.NotifyAlertChanged(GetHash(), CT_NEW);
             std::string strCmd = GetArg("-alertnotify", "");

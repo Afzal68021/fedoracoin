@@ -16,7 +16,7 @@ AboutDialog::AboutDialog(QWidget *parent) :
 
 void AboutDialog::setModel(ClientModel *model)
 {
-    if(model)
+    if (model)
     {
         ui->versionLabel->setText(model->formatFullVersion());
     }

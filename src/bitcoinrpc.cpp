@@ -203,7 +203,7 @@ Value stop(const Array& params, const CRPCContext& ctx, bool fHelp)
             "stop\n"
             "Stop FedoraCoin server.");
 
-    if(!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+    if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     // Shutdown will take long enough that the response should get back
     StartShutdown();
@@ -289,7 +289,7 @@ static const CRPCCommand vRPCCommands[] =
     { "verifymessage",          &verifymessage,          false,     false,     false,    true  },
     { "settxfee",               &settxfee,               false,     false,     true,     true  },
     { "setmininput",            &setmininput,            false,     false,     false,    true  },
-    { "signrawtransaction",     &signrawtransaction,     false,     false,     false,    true  },
+    { "signrawtransaction",     &signrawtransaction,     false,     false,     false,    false },
     { "sendrawtransaction",     &sendrawtransaction,     false,     false,     false,    true  },
     { "gettxoutsetinfo",        &gettxoutsetinfo,        true,      false,     false,    true  },
     { "gettxout",               &gettxout,               true,      false,     false,    true  },
@@ -545,23 +545,23 @@ CRPCContext HTTPAuthorized(map<string, string>& mapHeaders)
     string strUserPass64 = strAuth.substr(6); boost::trim(strUserPass64);
     string strUserPass = DecodeBase64(strUserPass64);
     int idx = strUserPass.find_first_of(":");
-    if(idx > -1)
+    if (idx > -1)
     {
         string user = strUserPass.substr(0, idx);
         SecureString pass;
         pass.reserve(MAX_PASSPHRASE_SIZE);
         pass = strUserPass.substr(idx+1, strUserPass.size()).c_str();
 
-        if(pusers->UserAuth(user, pass))
+        if (pusers->UserAuth(user, pass))
         {
             ctx.username = user;
             ctx.isAuthed = true;
-            if(!pusers->root.empty() && user == pusers->root)
+            if (!pusers->root.empty() && user == pusers->root)
                ctx.isAdmin = true;
         }
     }
     ctx.wallet = CWallet::GetUserWallet(ctx, NULL);
-    if(!ctx.wallet)
+    if (!ctx.wallet)
         ctx.isAuthed = false;
     return ctx;
 }
@@ -838,7 +838,7 @@ void StartRPCThreads()
         StartShutdown();
         return;
     }
-    if(!pusers->RootAccountExists() && mapArgs.count("-rpcuser") && !pusers->UserExists(mapArgs["-rpcuser"]))
+    if (!pusers->RootAccountExists() && mapArgs.count("-rpcuser") && !pusers->UserExists(mapArgs["-rpcuser"]))
     {
         SecureString pass;
         pass.reserve(MAX_PASSPHRASE_SIZE);
@@ -1031,7 +1031,7 @@ void ServiceConnection(AcceptedConnection *conn)
         if (!ReadHTTPRequestLine(conn->stream(), nProto, strMethod, strURI))
             break;
 
-        if(strMethod == "OPTIONS")
+        if (strMethod == "OPTIONS")
         {
            conn->stream() << HTTPReply(HTTP_JSON_OK, "", false) << std::flush;
            break;

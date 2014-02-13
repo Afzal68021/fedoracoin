@@ -101,7 +101,7 @@ void Shutdown()
     bool userLoaded = false;
     for(std::map<std::string, CWallet*>::iterator ii = userWallets.begin(); ii != userWallets.end(); ii++)
     {
-        if((*ii).second)
+        if ((*ii).second)
         {
             userLoaded = true;
             break;
@@ -115,9 +115,9 @@ void Shutdown()
         LOCK(cs_main);
         if (pwalletMain)
             pwalletMain->SetBestChain(CBlockLocator(pindexBest));
-        if(userLoaded)
+        if (userLoaded)
             for(std::map<std::string, CWallet*>::iterator ii = userWallets.begin(); ii != userWallets.end(); ii++)
-                if((*ii).second)
+                if ((*ii).second)
                     (*ii).second->SetBestChain(CBlockLocator(pindexBest));
 
         if (pblocktree)
@@ -137,9 +137,9 @@ void Shutdown()
         delete pwalletMain;
     }
 
-    if(userLoaded)
+    if (userLoaded)
         for(std::map<std::string, CWallet*>::iterator ii = userWallets.begin(); ii != userWallets.end(); ii++)
-            if((*ii).second)
+            if ((*ii).second)
             {
                 UnregisterWallet((*ii).second);
                 delete (*ii).second;

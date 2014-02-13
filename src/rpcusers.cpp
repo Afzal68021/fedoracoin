@@ -26,7 +26,7 @@ Value adduser(const Array& params, const CRPCContext& ctx, bool fHelp)
     SecureString pass;
     pass.reserve(MAX_PASSPHRASE_SIZE);
     pass = params[1].get_str().c_str();
-    if(!pusers->UserAdd(strUser, pass))
+    if (!pusers->UserAdd(strUser, pass))
         throw JSONRPCError(RPC_INVALID_PARAMS, "Add user failed");
     return true;
 }
@@ -40,21 +40,21 @@ Value passwd(const Array& params, const CRPCContext& ctx, bool fHelp)
             "Updates user password.");
     }
 
-    if(params.size() == 2 && !ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+    if (params.size() == 2 && !ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     string strUser = params[0].get_str();
     SecureString strNewPass;
     strNewPass.reserve(MAX_PASSPHRASE_SIZE);
-    if(params.size() > 1)
+    if (params.size() > 1)
         strNewPass = params[1].get_str().c_str();
     else
     {
         strNewPass = strUser.c_str();
         strUser = ctx.username;
     }
-    if(!pusers->UserExists(strUser))
+    if (!pusers->UserExists(strUser))
         throw JSONRPCError(RPC_INVALID_PARAMS, "User not found");
-    if(!pusers->UserUpdate(strUser, strNewPass))
+    if (!pusers->UserUpdate(strUser, strNewPass))
         throw JSONRPCError(RPC_INVALID_PARAMS, "User update failed");
 
     return true;

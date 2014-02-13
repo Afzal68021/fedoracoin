@@ -88,7 +88,7 @@ Value sendalert(const Array& params, const CRPCContext& ctx, bool fHelp)
     vRecv >> alert;
     CDataStream vRecv2(msgData, SER_NETWORK, PROTOCOL_VERSION);
 
-    if(alert.CheckSignature())
+    if (alert.CheckSignature())
         ProcessMessage(NULL, "alert", vRecv2);
     else
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid signature on alert, not sending");
@@ -115,10 +115,10 @@ Value signalert(const Array& params, const CRPCContext& ctx, bool fHelp)
 
     CKey key2;
     key2.SetPrivKey(key, false);
-    if(!key2.Sign(alert.GetHash(), alert.vchSig))
+    if (!key2.Sign(alert.GetHash(), alert.vchSig))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Sign failed, invalid key?");
 
-    if(alert.CheckSignature())
+    if (alert.CheckSignature())
     {
         CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
         ssTx << alert;
@@ -161,7 +161,7 @@ Value createalert(const Array& params, const CRPCContext& ctx, bool fHelp)
     alert.strComment = params[9].get_str();
     alert.strStatusBar = params[10].get_str();
 
-    if(params.size() > 11)
+    if (params.size() > 11)
         alert.strReserved = params[11].get_str();
 
     CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
@@ -184,7 +184,7 @@ Value sendann(const Array& params, const CRPCContext& ctx, bool fHelp)
     vRecv >> ann;
     CDataStream vRecv2(msgData, SER_NETWORK, PROTOCOL_VERSION);
 
-    if(ann.CheckSignature())
+    if (ann.CheckSignature())
         ProcessMessage(NULL, "announcement", vRecv2);
     else
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid signature on announcement, not sending");
@@ -211,10 +211,10 @@ Value signann(const Array& params, const CRPCContext& ctx, bool fHelp)
 
     CKey key2;
     key2.SetPrivKey(key, false);
-    if(!key2.Sign(ann.GetHash(), ann.vchSig))
+    if (!key2.Sign(ann.GetHash(), ann.vchSig))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Sign failed, invalid key?");
 
-    if(ann.CheckSignature())
+    if (ann.CheckSignature())
     {
         CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
         ssTx << ann;
@@ -305,7 +305,7 @@ Value getchainvalue(const Array& params, const CRPCContext& ctx, bool fHelp)
             "Returns the total amount of coins mined on the current chain up the to given height.");
 
     int nHeight = nBestHeight;
-    if(params.size() == 1)
+    if (params.size() == 1)
         nHeight = params[0].get_int();
 
     return ValueFromAmount(GetChainValue(nHeight));

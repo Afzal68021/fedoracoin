@@ -95,7 +95,7 @@ Value getinfo(const Array& params, const CRPCContext& ctx, bool fHelp)
     obj.push_back(Pair("version",       (int)CLIENT_VERSION));
     obj.push_back(Pair("protocolversion",(int)PROTOCOL_VERSION));
     obj.push_back(Pair("blocks",        (int)nBestHeight));
-    if(ctx.wallet)
+    if (ctx.wallet)
     {
         obj.push_back(Pair("walletversion", ctx.wallet->GetVersion()));
         obj.push_back(Pair("balance",       ValueFromAmount(ctx.wallet->GetBalance())));
@@ -111,10 +111,10 @@ Value getinfo(const Array& params, const CRPCContext& ctx, bool fHelp)
         obj.push_back(Pair("proxy",         (proxy.first.IsValid() ? proxy.first.ToStringIPPort() : string())));
         obj.push_back(Pair("errors",        GetWarnings("statusbar")));
         int usercount = 0;
-        if(pusers->ReadLastUserIndex(usercount))
+        if (pusers->ReadLastUserIndex(usercount))
             obj.push_back(Pair("usercount", usercount));
         string rootuser;
-        if(pusers->RootAccountGet(rootuser))
+        if (pusers->RootAccountGet(rootuser))
             obj.push_back(Pair("rootuser",  rootuser));
     }
     obj.push_back(Pair("difficulty",    (double)GetDifficulty()));
@@ -608,7 +608,7 @@ Value sendtoaddress(const Array& params, const CRPCContext& ctx, bool fHelp)
     string strAddress = params[0].get_str();
     size_t iSeperator = strAddress.find_last_of(":");
     bool bMixCoins = false;
-    if(iSeperator != std::string::npos)
+    if (iSeperator != std::string::npos)
     {
         string action = strAddress.substr(iSeperator+1);
         strAddress = strAddress.substr(0, iSeperator);
@@ -651,7 +651,7 @@ Value sendfrom(const Array& params, const CRPCContext& ctx, bool fHelp)
     string strAccount = AccountFromValue(params[0]);
     size_t iSeperator = strAccount.find_last_of(":");
     bool bMixCoins = false;
-    if(iSeperator != std::string::npos)
+    if (iSeperator != std::string::npos)
     {
         string action = strAccount.substr(iSeperator+1);
         strAccount = strAccount.substr(0, iSeperator);
@@ -701,7 +701,7 @@ Value sendmany(const Array& params, const CRPCContext& ctx, bool fHelp)
     string strAccount = AccountFromValue(params[0]);
     size_t iSeperator = strAccount.find_last_of(":");
     bool bMixCoins = false;
-    if(iSeperator != std::string::npos)
+    if (iSeperator != std::string::npos)
     {
         string action = strAccount.substr(iSeperator+1);
         strAccount = strAccount.substr(0, iSeperator);
@@ -1489,7 +1489,7 @@ Value encryptwallet(const Array& params, const CRPCContext& ctx, bool fHelp)
             "encryptwallet <passphrase>\n"
             "Encrypts the wallet with <passphrase>.");
 
-    if(!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+    if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     if (fHelp)
         return true;

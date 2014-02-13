@@ -111,7 +111,7 @@ bool CWallet::Unlock(const SecureString& strWalletPassphrase)
         LOCK(cs_wallet);
         BOOST_FOREACH(const MasterKeyMap::value_type& pMasterKey, mapMasterKeys)
         {
-            if(!crypter.SetKeyFromPassphrase(strWalletPassphrase, pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod))
+            if (!crypter.SetKeyFromPassphrase(strWalletPassphrase, pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod))
                 return false;
             if (!crypter.Decrypt(pMasterKey.second.vchCryptedKey, vMasterKey))
                 return false;
@@ -134,7 +134,7 @@ bool CWallet::ChangeWalletPassphrase(const SecureString& strOldWalletPassphrase,
         CKeyingMaterial vMasterKey;
         BOOST_FOREACH(MasterKeyMap::value_type& pMasterKey, mapMasterKeys)
         {
-            if(!crypter.SetKeyFromPassphrase(strOldWalletPassphrase, pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod))
+            if (!crypter.SetKeyFromPassphrase(strOldWalletPassphrase, pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod))
                 return false;
             if (!crypter.Decrypt(pMasterKey.second.vchCryptedKey, vMasterKey))
                 return false;
@@ -1217,7 +1217,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, uint64> >& vecSend,
                 double dPriority = 0;
 
                 // vouts to the payees
-                if(!bMixCoins)
+                if (!bMixCoins)
                 {
                     BOOST_FOREACH (const PAIRTYPE(CScript, uint64)& s, vecSend)
                     {
@@ -1236,7 +1236,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, uint64> >& vecSend,
                     uint256 hash_256;
                     hash_256.SetHex(nCurrentMixer);
                     CAnnouncement ann = CAnnouncement::getAnnouncementByHash(hash_256);
-                    if(!ann.IsAnnouncement())
+                    if (!ann.IsAnnouncement())
                     {
                         strFailReason = _("No mixing nodes available.");
                         return false;
@@ -1255,7 +1255,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, uint64> >& vecSend,
 
                     CScript scriptPubKey;
                     scriptPubKey.SetDestination(address.Get());
-                    if(!bMixFeeApplied)
+                    if (!bMixFeeApplied)
                     {
                         nValue = nValue + (nValue * 0.02);
                         nTotalValue = nValue + nFeeRet;
@@ -1290,7 +1290,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, uint64> >& vecSend,
                             return false;
                         }
 
-                        if(addresses.size() != 1)
+                        if (addresses.size() != 1)
                         {
                             strFailReason = _("Multisig or unusual transactions cannot be mixed.");
                             return false;
@@ -1303,7 +1303,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, uint64> >& vecSend,
                     // create our encrypted mixing data
                     size_t maxLen = (2048/8) - 42 - 16;    // 2048/8 is max size of a single RSA2048 text, and we don't want to mix too many transactions at once anyway
                                                         // 16 bytes is reserved for the header of the mixed coin message, 42 bytes are reserved for the RSA padding
-                    if(addrs.size() * 28 > maxLen)      // 28 = size of address public key (20) and the amount to send (8)
+                    if (addrs.size() * 28 > maxLen)      // 28 = size of address public key (20) and the amount to send (8)
                     {
                         strFailReason = _("Too many destinations for mixed coins.");
                         return false;
@@ -1359,7 +1359,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, uint64> >& vecSend,
                     int encrypt_len;
                     unsigned char toSend[2048/8];
                     memset(toSend, 0, 2048/8);
-                    if((encrypt_len = RSA_public_encrypt((2048/8) - 42, (unsigned char*)toEncrypt, (unsigned char*)toSend, pubkey, RSA_PKCS1_OAEP_PADDING)) == -1)
+                    if ((encrypt_len = RSA_public_encrypt((2048/8) - 42, (unsigned char*)toEncrypt, (unsigned char*)toSend, pubkey, RSA_PKCS1_OAEP_PADDING)) == -1)
                     {
                         strFailReason = _("Error encrypting mixed transaction: ") + _(ERR_error_string(ERR_get_error(), err));
                         return false;
@@ -1370,7 +1370,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, uint64> >& vecSend,
                     for(int i = 0; i < (2048/160)+1; i++)
                     {
                         int copy = 20;
-                        if(i+1 == (2048/160)+1)
+                        if (i+1 == (2048/160)+1)
                             copy = 16;
 
                         uint160 data(char2hex(toSend+(i*20), copy));
@@ -1799,7 +1799,7 @@ void CWallet::ReserveKeyFromKeyPool(int64& nIndex, CKeyPool& keypool)
             TopUpKeyPool();
 
         // Get the oldest key
-        if(setKeyPool.empty())
+        if (setKeyPool.empty())
             return;
 
         CWalletDB walletdb(strWalletFile);
@@ -1911,7 +1911,7 @@ std::map<CTxDestination, uint64> CWallet::GetAddressBalances()
                 CTxDestination addr;
                 if (!IsMine(pcoin->vout[i]))
                     continue;
-                if(!ExtractDestination(pcoin->vout[i].scriptPubKey, addr))
+                if (!ExtractDestination(pcoin->vout[i].scriptPubKey, addr))
                     continue;
 
                 uint64 n = pcoin->IsSpent(i) ? 0 : pcoin->vout[i].nValue;
@@ -1942,9 +1942,9 @@ set< set<CTxDestination> > CWallet::GetAddressGroupings()
             BOOST_FOREACH(CTxIn txin, pcoin->vin)
             {
                 CTxDestination address;
-                if(!IsMine(txin)) /* If this input isn't mine, ignore it */
+                if (!IsMine(txin)) /* If this input isn't mine, ignore it */
                     continue;
-                if(!ExtractDestination(mapWallet[txin.prevout.hash].vout[txin.prevout.n].scriptPubKey, address))
+                if (!ExtractDestination(mapWallet[txin.prevout.hash].vout[txin.prevout.n].scriptPubKey, address))
                     continue;
                 grouping.insert(address);
                 any_mine = true;
@@ -1957,7 +1957,7 @@ set< set<CTxDestination> > CWallet::GetAddressGroupings()
                    if (IsChange(txout))
                    {
                        CTxDestination txoutAddr;
-                       if(!ExtractDestination(txout.scriptPubKey, txoutAddr))
+                       if (!ExtractDestination(txout.scriptPubKey, txoutAddr))
                            continue;
                        grouping.insert(txoutAddr);
                    }
@@ -1974,7 +1974,7 @@ set< set<CTxDestination> > CWallet::GetAddressGroupings()
             if (IsMine(pcoin->vout[i]))
             {
                 CTxDestination address;
-                if(!ExtractDestination(pcoin->vout[i].scriptPubKey, address))
+                if (!ExtractDestination(pcoin->vout[i].scriptPubKey, address))
                     continue;
                 grouping.insert(address);
                 groupings.insert(grouping);
@@ -2120,21 +2120,21 @@ void CWallet::ListLockedCoins(std::vector<COutPoint>& vOutpts)
 CWallet* CWallet::GetUserWallet(const CRPCContext& ctx, int* errRet)
 {
     // wallet creation
-    if(ctx.isAdmin) return pwalletMain;
+    if (ctx.isAdmin) return pwalletMain;
 
     LOCK(cs_userWallets);
-    if(userWallets.count(ctx.username))
+    if (userWallets.count(ctx.username))
         return userWallets[ctx.username];
 
     bool fFirstRun = true;
     boost::filesystem::create_directory(GetDataDir() / "wallets");
     CWallet* userwallet = new CWallet("wallets/" + ctx.username + ".dat");
     DBErrors nLoadWalletRet = userwallet->LoadWallet(fFirstRun);
-    if(errRet)
+    if (errRet)
         *errRet = 0;
     if (nLoadWalletRet != DB_LOAD_OK)
     {
-        if(errRet)
+        if (errRet)
             *errRet = nLoadWalletRet;
         return NULL;
     }
@@ -2165,7 +2165,7 @@ CWallet* CWallet::GetUserWallet(const CRPCContext& ctx, int* errRet)
             userwallet->SetDefaultKey(newDefaultKey);
             if (!userwallet->SetAddressBookName(userwallet->vchDefaultKey.GetID(), ""))
             {
-                if(errRet)
+                if (errRet)
                     *errRet = 0x10;
                 return NULL;
             }

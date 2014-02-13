@@ -1287,7 +1287,7 @@ void ShrinkDebugFile()
             fclose(file);
         }
     }
-    else if(file != NULL)
+    else if (file != NULL)
 	     fclose(file);
 }
 
@@ -1389,7 +1389,7 @@ uint32_t insecure_rand_Rw = 11;
 void seed_insecure_rand(bool fDeterministic)
 {
     //The seed values have some unlikely fixed points which we avoid.
-    if(fDeterministic)
+    if (fDeterministic)
     {
         insecure_rand_Rz = insecure_rand_Rw = 11;
     } else {
@@ -1479,7 +1479,7 @@ boost::filesystem::path GetSpecialFolderPath(int nFolder, bool fCreate)
 
     char pszPath[MAX_PATH] = "";
 
-    if(SHGetSpecialFolderPathA(NULL, pszPath, nFolder, fCreate))
+    if (SHGetSpecialFolderPathA(NULL, pszPath, nFolder, fCreate))
     {
         return fs::path(pszPath);
     }

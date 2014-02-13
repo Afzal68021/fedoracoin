@@ -110,7 +110,7 @@ Value addnode(const Array& params, const CRPCContext& ctx, bool fHelp)
             throw JSONRPCError(-23, "Error: Node already added");
         vAddedNodes.push_back(strNode);
     }
-    else if(strCommand == "remove")
+    else if (strCommand == "remove")
     {
         if (it == vAddedNodes.end())
             throw JSONRPCError(-24, "Error: Node has not been added.");
@@ -170,7 +170,7 @@ Value getaddednodeinfo(const Array& params, const CRPCContext& ctx, bool fHelp)
     BOOST_FOREACH(string& strAddNode, laddedNodes)
     {
         vector<CService> vservNode(0);
-        if(Lookup(strAddNode.c_str(), vservNode, GetDefaultPort(), fNameLookup, 0))
+        if (Lookup(strAddNode.c_str(), vservNode, GetDefaultPort(), fNameLookup, 0))
             laddedAddreses.push_back(make_pair(strAddNode, vservNode));
         else
         {

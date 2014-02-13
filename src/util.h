@@ -314,10 +314,10 @@ std::string HexStr(const T itbegin, const T itend, bool fSpaces=false)
     static const char hexmap[16] = { '0', '1', '2', '3', '4', '5', '6', '7',
                                      '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
     rv.reserve((itend-itbegin)*3);
-    for(T it = itbegin; it < itend; ++it)
+    for (T it = itbegin; it < itend; ++it)
     {
         unsigned char val = (unsigned char)(*it);
-        if(fSpaces && it != itbegin)
+        if (fSpaces && it != itbegin)
             rv.push_back(' ');
         rv.push_back(hexmap[val>>4]);
         rv.push_back(hexmap[val&15]);
@@ -495,7 +495,7 @@ public:
 
     void input(T value)
     {
-        if(vValues.size() == nSize)
+        if (vValues.size() == nSize)
         {
             vValues.erase(vValues.begin());
         }
@@ -510,7 +510,7 @@ public:
     {
         int size = vSorted.size();
         assert(size>0);
-        if(size & 1) // Odd number of elements
+        if (size & 1) // Odd number of elements
         {
             return vSorted[size/2];
         }

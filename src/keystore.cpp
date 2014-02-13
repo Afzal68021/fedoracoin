@@ -89,7 +89,7 @@ bool CCryptoKeyStore::Unlock(const CKeyingMaterial& vMasterKeyIn)
             const CPubKey &vchPubKey = (*mi).second.first;
             const std::vector<unsigned char> &vchCryptedSecret = (*mi).second.second;
             CKeyingMaterial vchSecret;
-            if(!DecryptSecret(vMasterKeyIn, vchCryptedSecret, vchPubKey.GetHash(), vchSecret))
+            if (!DecryptSecret(vMasterKeyIn, vchCryptedSecret, vchPubKey.GetHash(), vchSecret))
                 return false;
             if (vchSecret.size() != 32)
                 return false;

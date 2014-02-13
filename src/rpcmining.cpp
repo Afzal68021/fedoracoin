@@ -157,7 +157,7 @@ Value getmininginfo(const Array& params, const CRPCContext& ctx, bool fHelp)
     obj.push_back(Pair("currentblocksize",(uint64_t)nLastBlockSize));
     obj.push_back(Pair("currentblocktx",(uint64_t)nLastBlockTx));
     obj.push_back(Pair("difficulty",    (double)GetDifficulty()));
-    if(ctx.isAdmin)
+    if (ctx.isAdmin)
     {
         obj.push_back(Pair("errors",        GetWarnings("statusbar")));
         obj.push_back(Pair("generate",      GetBoolArg("-gen")));
@@ -275,7 +275,7 @@ Value getworkex(const Array& params, const CRPCContext& ctx, bool fHelp)
         vector<unsigned char> vchData = ParseHex(params[0].get_str());
         vector<unsigned char> coinbase;
 
-        if(params.size() == 2)
+        if (params.size() == 2)
             coinbase = ParseHex(params[1].get_str());
 
         if (vchData.size() != 128)
@@ -295,7 +295,7 @@ Value getworkex(const Array& params, const CRPCContext& ctx, bool fHelp)
         pblock->nTime = pdata->nTime;
         pblock->nNonce = pdata->nNonce;
 
-        if(coinbase.size() == 0)
+        if (coinbase.size() == 0)
             pblock->vtx[0].vin[0].scriptSig = mapNewBlock[pdata->hashMerkleRoot].second;
         else
             CDataStream(coinbase, SER_NETWORK, PROTOCOL_VERSION) >> pblock->vtx[0];
@@ -484,7 +484,7 @@ Value getblocktemplate(const Array& params, const CRPCContext& ctx, bool fHelp)
         nStart = GetTime();
 
         // Create new block
-        if(pblocktemplate)
+        if (pblocktemplate)
         {
             delete pblocktemplate;
             pblocktemplate = NULL;

@@ -342,8 +342,6 @@ Value signrawtransaction(const Array& params, const CRPCContext& ctx, bool fHelp
             "  complete : 1 if transaction has a complete set of signature (0 if not)"
             + HelpRequiringPassphrase(ctx));
 
-    //if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
-
     RPCTypeCheck(params, list_of(str_type)(array_type)(array_type)(str_type), true);
 
     vector<unsigned char> txData(ParseHexV(params[0], "argument 1"));

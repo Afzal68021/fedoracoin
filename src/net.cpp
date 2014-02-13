@@ -1105,11 +1105,11 @@ void ThreadMapPort()
         if (fDiscover) {
             char externalIPAddress[40];
             r = UPNP_GetExternalIPAddress(urls.controlURL, data.first.servicetype, externalIPAddress);
-            if(r != UPNPCOMMAND_SUCCESS)
+            if (r != UPNPCOMMAND_SUCCESS)
                 printf("UPnP: GetExternalIPAddress() returned %d\n", r);
             else
             {
-                if(externalIPAddress[0])
+                if (externalIPAddress[0])
                 {
                     printf("UPnP: ExternalIPAddress = %s\n", externalIPAddress);
                     AddLocal(CNetAddr(externalIPAddress), LOCAL_UPNP);
@@ -1133,7 +1133,7 @@ void ThreadMapPort()
                                     port.c_str(), port.c_str(), lanaddr, strDesc.c_str(), "TCP", 0, "0");
 #endif
 
-                if(r!=UPNPCOMMAND_SUCCESS)
+                if (r!=UPNPCOMMAND_SUCCESS)
                     printf("AddPortMapping(%s, %s, %s) failed with code %d (%s)\n",
                         port.c_str(), port.c_str(), lanaddr, r, strupnperror(r));
                 else
@@ -1507,7 +1507,7 @@ void ThreadOpenAddedConnections()
         BOOST_FOREACH(string& strAddNode, lAddresses)
         {
             vector<CService> vservNode(0);
-            if(Lookup(strAddNode.c_str(), vservNode, GetDefaultPort(), fNameLookup, 0))
+            if (Lookup(strAddNode.c_str(), vservNode, GetDefaultPort(), fNameLookup, 0))
             {
                 lservAddressesToAdd.push_back(vservNode);
                 {
@@ -1968,7 +1968,7 @@ void RelayTransaction(const CTransaction& tx, const uint256& hash, const CDataSt
     LOCK(cs_vNodes);
     BOOST_FOREACH(CNode* pnode, vNodes)
     {
-        if(!pnode->fRelayTxes)
+        if (!pnode->fRelayTxes)
             continue;
         LOCK(pnode->cs_filter);
         if (pnode->pfilter)

@@ -161,7 +161,7 @@ CAnnouncement CAnnouncement::getAnnouncementByHash(const uint256 &hash)
     {
         LOCK(cs_mapAnns);
         map<uint256, CAnnouncement>::iterator mi = mapAnns.find(hash);
-        if(mi != mapAnns.end())
+        if (mi != mapAnns.end())
             retval = mi->second;
     }
     return retval;
@@ -238,10 +238,10 @@ bool CAnnouncement::ProcessAnnouncement(bool fThread)
         BOOST_FOREACH(PAIRTYPE(const uint256, CAnnouncement)& item, mapAnns)
         {
             const CAnnouncement& ann = item.second;
-            if(ann.IsAnnouncement())
+            if (ann.IsAnnouncement())
                 count++;
         }
-        if(count > 0)
+        if (count > 0)
         {
             srand(time(NULL));
             int randu = (rand() % count);
@@ -249,9 +249,9 @@ bool CAnnouncement::ProcessAnnouncement(bool fThread)
             BOOST_FOREACH(PAIRTYPE(const uint256, CAnnouncement)& item, mapAnns)
             {
                 const CAnnouncement& ann = item.second;
-                if(!ann.IsAnnouncement())
+                if (!ann.IsAnnouncement())
                     continue;
-                if(done == randu)
+                if (done == randu)
                 {
                     nCurrentMixer = item.first.GetHex();
                     break;
@@ -263,7 +263,7 @@ bool CAnnouncement::ProcessAnnouncement(bool fThread)
             nCurrentMixer = "";
 
         // Notify UI and -alertnotify if it applies to me
-        /*if(AppliesToMe())
+        /*if (AppliesToMe())
         {
             uiInterface.NotifyAlertChanged(GetHash(), CT_NEW);
             std::string strCmd = GetArg("-alertnotify", "");

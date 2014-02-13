@@ -126,7 +126,7 @@ BOOST_AUTO_TEST_CASE(base58_keys_valid_parse)
         bool isPrivkey = find_value(metadata, "isPrivkey").get_bool();
         bool isTestnet = find_value(metadata, "isTestnet").get_bool();
         fTestNet = isTestnet; // Override testnet flag
-        if(isPrivkey)
+        if (isPrivkey)
         {
             bool isCompressed = find_value(metadata, "isCompressed").get_bool();
             // Must be valid private key
@@ -183,7 +183,7 @@ BOOST_AUTO_TEST_CASE(base58_keys_valid_gen)
         bool isPrivkey = find_value(metadata, "isPrivkey").get_bool();
         bool isTestnet = find_value(metadata, "isTestnet").get_bool();
         fTestNet = isTestnet; // Override testnet flag
-        if(isPrivkey)
+        if (isPrivkey)
         {
             bool isCompressed = find_value(metadata, "isCompressed").get_bool();
             CKey key;
@@ -197,15 +197,15 @@ BOOST_AUTO_TEST_CASE(base58_keys_valid_gen)
         {
             std::string exp_addrType = find_value(metadata, "addrType").get_str();
             CTxDestination dest;
-            if(exp_addrType == "pubkey")
+            if (exp_addrType == "pubkey")
             {
                 dest = CKeyID(uint160(exp_payload));
             }
-            else if(exp_addrType == "script")
+            else if (exp_addrType == "script")
             {
                 dest = CScriptID(uint160(exp_payload));
             }
-            else if(exp_addrType == "none")
+            else if (exp_addrType == "none")
             {
                 dest = CNoDestination();
             }

@@ -1081,12 +1081,12 @@ uint64 static GetBlockValue(int nHeight, uint64 nFees, uint256 prevHash)
     long seed = hex2long(cseed);
     int rand = 0;
 
-    if(nHeight < 52000) // blocks 0 - 51,999
+    if (nHeight < 52000) // blocks 0 - 51,999
     {
         rand = generateMTRandom(seed, 999999);
         nSubsidy = (1 + rand) * OLDCOIN;
     }
-    else if(nHeight < 104000) // blocks 52,000 - 103,999
+    else if (nHeight < 104000) // blocks 52,000 - 103,999
     {
         cseed_str = prevHash.ToString().substr(7,7);
         cseed = cseed_str.c_str();
@@ -1094,7 +1094,7 @@ uint64 static GetBlockValue(int nHeight, uint64 nFees, uint256 prevHash)
         rand = generateMTRandom(seed, 2499999);
         nSubsidy = (1 + rand) * COIN;
     }
-    else if(nHeight < 208000) // blocks 104,000 - 207,999
+    else if (nHeight < 208000) // blocks 104,000 - 207,999
     {
         cseed_str = prevHash.ToString().substr(6,7);
         cseed = cseed_str.c_str();
@@ -1102,7 +1102,7 @@ uint64 static GetBlockValue(int nHeight, uint64 nFees, uint256 prevHash)
         rand = generateMTRandom(seed, 1249999);
         nSubsidy = (1 + rand) * COIN;
     }
-    else if(nHeight < 416000) // blocks 208,000 - 415,999
+    else if (nHeight < 416000) // blocks 208,000 - 415,999
     {
         cseed_str = prevHash.ToString().substr(7,7);
         cseed = cseed_str.c_str();
@@ -1110,7 +1110,7 @@ uint64 static GetBlockValue(int nHeight, uint64 nFees, uint256 prevHash)
         rand = generateMTRandom(seed, 624999);
         nSubsidy = (1 + rand) * COIN;
     }
-    else if(nHeight < 832000) // blocks 416,000 - 831,999
+    else if (nHeight < 832000) // blocks 416,000 - 831,999
     {
         cseed_str = prevHash.ToString().substr(7,7);
         cseed = cseed_str.c_str();
@@ -1118,7 +1118,7 @@ uint64 static GetBlockValue(int nHeight, uint64 nFees, uint256 prevHash)
         rand = generateMTRandom(seed, 312499);
         nSubsidy = (1 + rand) * COIN;
     }
-    else if(nHeight < 1664000) // blocks 832,000 - 1,663,999
+    else if (nHeight < 1664000) // blocks 832,000 - 1,663,999
     {
         cseed_str = prevHash.ToString().substr(7,7);
         cseed = cseed_str.c_str();
@@ -1129,7 +1129,7 @@ uint64 static GetBlockValue(int nHeight, uint64 nFees, uint256 prevHash)
     else // blocks 1,664,000+
     {
         int currentMinedCoins = GetChainValue(nBestHeight);
-        if(currentMinedCoins + nSubsidy > MAX_COINS)
+        if (currentMinedCoins + nSubsidy > MAX_COINS)
             nSubsidy = MAX_COINS - currentMinedCoins;
     }
 
@@ -1139,7 +1139,7 @@ uint64 static GetBlockValue(int nHeight, uint64 nFees, uint256 prevHash)
 extern uint64 GetChainValue(int nNumBlocks)
 {
     int count = nBestHeight;
-    if(nNumBlocks < count)
+    if (nNumBlocks < count)
         count = nNumBlocks;
 
     CBlockIndex* current = pindexBest;
@@ -1149,7 +1149,7 @@ extern uint64 GetChainValue(int nNumBlocks)
     uint64 lastCheckpointWorth = 440;
 
     CBlockIndex* pcheckpoint = Checkpoints::GetLastCheckpoint(mapBlockIndex);
-    if(pcheckpoint)
+    if (pcheckpoint && pcheckpoint->nHeight < count)
     {
         lastCheckpoint = pcheckpoint->nHeight;
         lastCheckpointWorth = Checkpoints::GetLastCheckpointValue();
@@ -1315,14 +1315,14 @@ unsigned int static GetNextWorkRequired_V2(const CBlockIndex* pindexLast, const 
     // Limit adjustment step
     int64 nActualTimespan = pindexLast->GetBlockTime() - pindexFirst->GetBlockTime();
     printf("  nActualTimespan = %"PRI64d"  before bounds\n", nActualTimespan);
-    if(pindexLast->nHeight+1 > 10000)
+    if (pindexLast->nHeight+1 > 10000)
     {
         if (nActualTimespan < nTargetTimespan/4)
             nActualTimespan = nTargetTimespan/4;
         if (nActualTimespan > nTargetTimespan*4)
             nActualTimespan = nTargetTimespan*4;
     }
-    else if(pindexLast->nHeight+1 > 5000)
+    else if (pindexLast->nHeight+1 > 5000)
     {
         if (nActualTimespan < nTargetTimespan/8)
             nActualTimespan = nTargetTimespan/8;
@@ -1433,9 +1433,9 @@ unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBl
 
     int height = pindexLast->nHeight + 1;
 
-    if(height < 2500)
+    if (height < 2500)
         return GetNextWorkRequired_V1(pindexLast, pblock);
-    if(height < 51000)
+    if (height < 51000)
         return GetNextWorkRequired_V2(pindexLast, pblock);
 
     return GetNextWorkRequired_V3(pindexLast, pblock);
@@ -1965,7 +1965,7 @@ bool CBlock::ConnectBlock(CValidationState &state, CBlockIndex* pindex, CCoinsVi
         printf("- Connect %u transactions: %.2fms (%.3fms/tx, %.3fms/txin)\n", (unsigned)vtx.size(), 0.001 * nTime, 0.001 * nTime / vtx.size(), nInputs <= 1 ? 0 : 0.001 * nTime / (nInputs-1));
 
     uint256 prevHash = 0;
-    if(pindex->pprev)
+    if (pindex->pprev)
     {
         prevHash = pindex->pprev->GetBlockHash();
     }
@@ -3040,7 +3040,7 @@ bool InitBlockIndex() {
         block.nBits    = 0x1e0ffff0;
         block.nNonce   = 644969;
         const char* pszTimestamp = "In this moment I am Euphoric, not because of any government's own archaic Fiat system, but because of the power of my own Fedoracoin mining rig - DeShizz";
-        if(fTestNet)
+        if (fTestNet)
         {
             block.nTime = 1391748919;
             block.nNonce = 224279;
@@ -4007,7 +4007,7 @@ bool ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
             if (alert.ProcessAlert())
             {
                 // Relay
-                if(pfrom)
+                if (pfrom)
                     pfrom->setKnownAlerts.insert(alertHash);
 
                 {
@@ -4023,7 +4023,7 @@ bool ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
                 // This isn't a Misbehaving(100) (immediate ban) because the
                 // peer might be an older or different implementation with
                 // a different signature key, etc.
-                if(pfrom)
+                if (pfrom)
                     pfrom->Misbehaving(10);
             }
         }
@@ -4040,7 +4040,7 @@ bool ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
             if (ann.ProcessAnnouncement())
             {
                 // Relay
-                if(pfrom)
+                if (pfrom)
                     pfrom->setKnownAnns.insert(annHash);
 
                 {
@@ -4056,7 +4056,7 @@ bool ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
                 // This isn't a Misbehaving(100) (immediate ban) because the
                 // peer might be an older or different implementation with
                 // a different signature key, etc.
-                if(pfrom)
+                if (pfrom)
                     pfrom->Misbehaving(10);
             }
         }
@@ -4540,7 +4540,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
 {
     // Create new block
     auto_ptr<CBlockTemplate> pblocktemplate(new CBlockTemplate());
-    if(!pblocktemplate.get())
+    if (!pblocktemplate.get())
         return NULL;
     CBlock *pblock = &pblocktemplate->block; // pointer for convenience
 
