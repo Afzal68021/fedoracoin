@@ -8,16 +8,22 @@
 #include "bitcoinrpc.h"
 #include <boost/lexical_cast.hpp>
 using namespace std;
+CCriticalSection cs_userCount;
 
 CUserDB::CUserDB(size_t nCacheSize, bool fMemory, bool fWipe) : CLevelDB(GetDataDir() / "users", nCacheSize, fMemory, fWipe) {
 }
 bool CUserDB::WriteLastUserIndex(int bLastIdx)
 {
+    LOCK(cs_userCount);
     return Write('U', bLastIdx);
 }
 
 bool CUserDB::ReadLastUserIndex(int& bLastIdx)
 {
+    LOCK(cs_userCount);
+    int defaultidx = 0;
+    if(!Read('U', bLastIdx))
+        Write('U', defaultidx);
     return Read('U', bLastIdx);
 }
 
@@ -65,9 +71,16 @@ bool CUserDB::UserAdd(string username, const SecureString& password)
     CRPCContext ctx;
     ctx.username = username;
     CWallet* userWallet = CWallet::GetUserWallet(ctx, NULL);
-    if(userWallet)
+    if(userWallet && !userWallet->IsCrypted())
         userWallet->EncryptWallet(password);
-    return userWallet && Write("U:" + user, pass_hash) && (!this->RootAccountExists() ? this->RootAccountSet(user) : true);
+    if(userWallet && Write("U:" + user, pass_hash) && (!this->RootAccountExists() ? this->RootAccountSet(user) : true))
+    {
+        int last = 0;
+        this->ReadLastUserIndex(last);
+        this->WriteLastUserIndex(last+1);
+        return true;
+    }
+    return false;
 }
 
 bool CUserDB::UserUpdate(string username, const SecureString& password)

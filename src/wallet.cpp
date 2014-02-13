@@ -1339,7 +1339,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, uint64> >& vecSend,
                         idx += addr.first.size();
                     }
 
-                    int size = idx - 16;
+                    int size = idx;
                     memcpy(toEncrypt+12, &size, sizeof(int));
 
                     // load our public key

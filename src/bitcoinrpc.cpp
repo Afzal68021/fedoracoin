@@ -838,7 +838,7 @@ void StartRPCThreads()
         StartShutdown();
         return;
     }
-    if(!pusers->RootAccountExists() && !pusers->UserExists(mapArgs["-rpcuser"]))
+    if(!pusers->RootAccountExists() && mapArgs.count("-rpcuser") && !pusers->UserExists(mapArgs["-rpcuser"]))
     {
         SecureString pass;
         pass.reserve(MAX_PASSPHRASE_SIZE);

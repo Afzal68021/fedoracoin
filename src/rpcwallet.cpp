@@ -110,9 +110,12 @@ Value getinfo(const Array& params, const CRPCContext& ctx, bool fHelp)
         obj.push_back(Pair("connections",   (int)vNodes.size()));
         obj.push_back(Pair("proxy",         (proxy.first.IsValid() ? proxy.first.ToStringIPPort() : string())));
         obj.push_back(Pair("errors",        GetWarnings("statusbar")));
+        int usercount = 0;
+        if(pusers->ReadLastUserIndex(usercount))
+            obj.push_back(Pair("usercount", usercount));
         string rootuser;
         if(pusers->RootAccountGet(rootuser))
-            obj.push_back(Pair("rootuser", rootuser));
+            obj.push_back(Pair("rootuser",  rootuser));
     }
     obj.push_back(Pair("difficulty",    (double)GetDifficulty()));
     obj.push_back(Pair("testnet",       fTestNet));
