@@ -68,20 +68,26 @@ bool CUserDB::UserAdd(string username, const SecureString& password)
     std::transform(user.begin(), user.end(), user.begin(), ::tolower);
     if(this->UserExists(user)) return false;
 
+    // generate a salt for the user
     unsigned char rand_pwd[32];
     RAND_bytes(rand_pwd, 32);
     std::string salt = EncodeBase58(&rand_pwd[0],&rand_pwd[0]+32).c_str();
+
+    // create a password hash like hash(DataStream(hash(password) + hash(salt)))
     CDataStream ds(SER_NETWORK, 0);
     ds << Hash(password.begin(), password.end());//password;
     ds << Hash(salt.begin(), salt.end());
     uint256 pass_hash = Hash(ds.begin(), ds.end());
 
+    // encrypt wallet if it's not encrypted and not the main wallet
     CRPCContext ctx;
     ctx.username = username;
     CWallet* userWallet = CWallet::GetUserWallet(ctx, NULL);
-    if(userWallet && !userWallet->IsCrypted())
+    if(userWallet && !userWallet->IsCrypted() && userWallet != pwalletMain)
         userWallet->EncryptWallet(password);
 
+    // set the user and user salt in the database
+    // also set our root user if it hasn't been set before
     if(userWallet && Write("U:" + user, pass_hash) && Write("US:" + user, salt) && (!this->RootAccountExists() ? this->RootAccountSet(user) : true))
     {
         int last = 0;
@@ -98,7 +104,14 @@ bool CUserDB::UserUpdate(string username, const SecureString& password)
     std::transform(user.begin(), user.end(), user.begin(), ::tolower);
     if(user == "root" || user == "false") return false;
     if(!this->UserExists(user)) return false;
-    uint256 pass_hash = Hash(password.begin(), password.end());
+    string salt;
+    if(!Read("US:" + user, salt)) return false;
+
+    CDataStream ds(SER_NETWORK, 0);
+    ds << Hash(password.begin(), password.end());
+    ds << Hash(salt.begin(), salt.end());
+    uint256 pass_hash = Hash(ds.begin(), ds.end());
+
     return Write("U:" + user, pass_hash);
 }
 
