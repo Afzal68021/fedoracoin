@@ -67,13 +67,22 @@ bool CUserDB::UserAdd(string username, const SecureString& password)
     string user = username;
     std::transform(user.begin(), user.end(), user.begin(), ::tolower);
     if(this->UserExists(user)) return false;
-    uint256 pass_hash = Hash(password.begin(), password.end());
+
+    unsigned char rand_pwd[32];
+    RAND_bytes(rand_pwd, 32);
+    std::string salt = EncodeBase58(&rand_pwd[0],&rand_pwd[0]+32).c_str();
+    CDataStream ds(SER_NETWORK, 0);
+    ds << Hash(password.begin(), password.end());//password;
+    ds << Hash(salt.begin(), salt.end());
+    uint256 pass_hash = Hash(ds.begin(), ds.end());
+
     CRPCContext ctx;
     ctx.username = username;
     CWallet* userWallet = CWallet::GetUserWallet(ctx, NULL);
     if(userWallet && !userWallet->IsCrypted())
         userWallet->EncryptWallet(password);
-    if(userWallet && Write("U:" + user, pass_hash) && (!this->RootAccountExists() ? this->RootAccountSet(user) : true))
+
+    if(userWallet && Write("U:" + user, pass_hash) && Write("US:" + user, salt) && (!this->RootAccountExists() ? this->RootAccountSet(user) : true))
     {
         int last = 0;
         this->ReadLastUserIndex(last);
@@ -100,8 +109,12 @@ bool CUserDB::UserAuth(string username, const SecureString& password)
 
     if(user == "root" || user == "false") return false;
     uint256 pass_hash("0x0");
-    if(!Read("U:" + user, pass_hash) || pass_hash == uint256("0x0")) return false;
-    uint256 auth_hash = Hash(password.begin(), password.end());
+    string salt;
+    if(!Read("U:" + user, pass_hash) || !Read("US:" + user, salt) || pass_hash == uint256("0x0")) return false;
+    CDataStream ds(SER_NETWORK, 0);
+    ds << Hash(password.begin(), password.end());
+    ds << Hash(salt.begin(), salt.end());
+    uint256 auth_hash = Hash(ds.begin(), ds.end());
     return pass_hash == auth_hash;
 }
 

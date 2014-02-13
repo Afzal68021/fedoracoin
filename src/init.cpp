@@ -603,7 +603,7 @@ bool AppInit2(boost::thread_group& threadGroup)
         fServer = GetBoolArg("-server");
 
     /* force fServer when running without GUI */
-#if !defined(GT_GUI)
+#if !defined(QT_GUI)
     fServer = true;
 #endif
     fPrintToConsole = GetBoolArg("-printtoconsole");
@@ -1155,7 +1155,7 @@ bool AppInit2(boost::thread_group& threadGroup)
     // InitRPCMining is needed here so getwork/getblocktemplate in the GUI debug console works properly.
     InitRPCMining();
 
-    if(fServer)
+    if (fServer)
         StartRPCThreads();
 
     // Generate coins in the background
