@@ -152,7 +152,7 @@ string CRPCTable::help(string strCommand, const CRPCContext& ctx) const
             continue;
         if (strCommand != "" && strMethod != strCommand)
             continue;
-        if (pcmd->reqWallet && !pwalletMain)
+        if (pcmd->reqWallet && !ctx.wallet)
             continue;
         if (!ctx.isAdmin && pcmd->adminsOnly)
             continue;
@@ -263,6 +263,18 @@ static const CRPCCommand vRPCCommands[] =
     { "sendtoaddress",          &sendtoaddress,          false,     false,     true,     false },
     { "addmultisigaddress",     &addmultisigaddress,     false,     false,     true,     false },
 
+
+    { "keypoolrefill",          &keypoolrefill,          true,      false,     true,     false  },
+    { "walletpassphrase",       &walletpassphrase,       true,      false,     true,     false  },
+    { "walletpassphrasechange", &walletpassphrasechange, false,     false,     true,     false  },
+    { "walletlock",             &walletlock,             true,      false,     true,     false  },
+    { "createmultisig",         &createmultisig,         true,      true ,     false,    false  },
+    { "listaddressgroupings",   &listaddressgroupings,   false,     false,     true,     false  },
+    { "listunspent",            &listunspent,            false,     false,     true,     false  },
+    { "lockunspent",            &lockunspent,            false,     false,     true,     false  },
+    { "listlockunspent",        &listlockunspent,        false,     false,     true,     false  },
+    { "passwd",                 &passwd,                 true,      false,     false,    false  },
+
     { "stop",                   &stop,                   true,      true,      false,    true  },
     { "getconnectioncount",     &getconnectioncount,     true,      false,     false,    true  },
     { "getpeerinfo",            &getpeerinfo,            true,      false,     false,    true  },
@@ -270,30 +282,19 @@ static const CRPCCommand vRPCCommands[] =
     { "getaddednodeinfo",       &getaddednodeinfo,       true,      true,      false,    true  },
     { "generatekey",            &generatekey,            true,      false,     false,    true  },
     { "backupwallet",           &backupwallet,           true,      false,     true,     true  },
-    { "keypoolrefill",          &keypoolrefill,          true,      false,     true,     true  },
-    { "walletpassphrase",       &walletpassphrase,       true,      false,     true,     true  },
-    { "walletpassphrasechange", &walletpassphrasechange, false,     false,     true,     true  },
-    { "walletlock",             &walletlock,             true,      false,     true,     true  },
-    { "encryptwallet",          &encryptwallet,          false,     false,     true,     true  },
     { "getgenerate",            &getgenerate,            true,      false,     false,    true  },
     { "setgenerate",            &setgenerate,            true,      false,     true,     true  },
     { "gethashespersec",        &gethashespersec,        true,      false,     false,    true  },
-    { "createmultisig",         &createmultisig,         true,      true ,     false,    true  },
     { "getrawmempool",          &getrawmempool,          true,      false,     false,    true  },
-    { "listaddressgroupings",   &listaddressgroupings,   false,     false,     true,     true  },
     { "verifymessage",          &verifymessage,          false,     false,     false,    true  },
     { "settxfee",               &settxfee,               false,     false,     true,     true  },
     { "setmininput",            &setmininput,            false,     false,     false,    true  },
-    { "listunspent",            &listunspent,            false,     false,     true,     true  },
     { "signrawtransaction",     &signrawtransaction,     false,     false,     false,    true  },
     { "sendrawtransaction",     &sendrawtransaction,     false,     false,     false,    true  },
     { "gettxoutsetinfo",        &gettxoutsetinfo,        true,      false,     false,    true  },
     { "gettxout",               &gettxout,               true,      false,     false,    true  },
-    { "lockunspent",            &lockunspent,            false,     false,     true,     true  },
-    { "listlockunspent",        &listlockunspent,        false,     false,     true,     true  },
     { "verifychain",            &verifychain,            true,      false,     false,    true  },
     { "adduser",                &adduser,                true,      false,     false,    true  },
-    { "passwd",                 &passwd,                 true,      false,     false,    true  },
     { "authuser",               &authuser,               true,      false,     false,    true  },
     { "root",                   &root,                   true,      false,     false,    true  },
     { "createalert",            &createalert,            true,      false,     false,    true  },
@@ -303,6 +304,7 @@ static const CRPCCommand vRPCCommands[] =
     { "signann",                &signann,                true,      false,     false,    true  },
     { "sendann",                &sendann,                true,      false,     false,    true  },
     { "listann",                &listann,                true,      false,     false,    true  },
+    { "encryptwallet",          &encryptwallet,          false,     false,     true,     true  },
 };
 
 CRPCTable::CRPCTable()
@@ -546,7 +548,9 @@ CRPCContext HTTPAuthorized(map<string, string>& mapHeaders)
     if(idx > -1)
     {
         string user = strUserPass.substr(0, idx);
-        string pass = strUserPass.substr(idx+1, strUserPass.size());
+        SecureString pass;
+        pass.reserve(MAX_PASSPHRASE_SIZE);
+        pass = strUserPass.substr(idx+1, strUserPass.size()).c_str();
 
         if(pusers->UserAuth(user, pass))
         {
@@ -556,6 +560,9 @@ CRPCContext HTTPAuthorized(map<string, string>& mapHeaders)
                ctx.isAdmin = true;
         }
     }
+    ctx.wallet = CWallet::GetUserWallet(ctx, NULL);
+    if(!ctx.wallet)
+        ctx.isAuthed = false;
     return ctx;
 }
 
@@ -832,7 +839,12 @@ void StartRPCThreads()
         return;
     }
     if(!pusers->RootAccountExists() && !pusers->UserExists(mapArgs["-rpcuser"]))
-        pusers->UserAdd(mapArgs["-rpcuser"], mapArgs["-rpcpassword"]);
+    {
+        SecureString pass;
+        pass.reserve(MAX_PASSPHRASE_SIZE);
+        pass = mapArgs["-rpcpassword"].c_str();
+        pusers->UserAdd(mapArgs["-rpcuser"], pass);
+    }
 
     assert(rpc_io_service == NULL);
     rpc_io_service = new asio::io_service();
@@ -1104,7 +1116,7 @@ json_spirit::Value CRPCTable::execute(const std::string &strMethod, const json_s
         throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found");
     if (!ctx.isAdmin && pcmd->adminsOnly)
         throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
-    if (pcmd->reqWallet && !pwalletMain)
+    if (pcmd->reqWallet && !ctx.wallet)
         throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (disabled)");
 
     // Observe safe mode
@@ -1120,11 +1132,11 @@ json_spirit::Value CRPCTable::execute(const std::string &strMethod, const json_s
         {
             if (pcmd->threadSafe)
                 result = pcmd->actor(params, ctx, false);
-            else if (!pwalletMain) {
+            else if (!ctx.wallet) {
                 LOCK(cs_main);
                 result = pcmd->actor(params, ctx, false);
             } else {
-                LOCK2(cs_main, pwalletMain->cs_wallet);
+                LOCK2(cs_main, ctx.wallet->cs_wallet);
                 result = pcmd->actor(params, ctx, false);
             }
         }

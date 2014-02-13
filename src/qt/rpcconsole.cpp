@@ -3,6 +3,7 @@
 
 #include "clientmodel.h"
 #include "bitcoinrpc.h"
+#include "wallet.h"
 #include "guiutil.h"
 
 #include <QTime>
@@ -135,6 +136,7 @@ void RPCExecutor::request(const QString &command)
         CRPCContext ctx;
         ctx.username = "root";
         ctx.isAdmin = true;
+        ctx.wallet = CWallet::GetUserWallet(ctx, NULL);
 
         json_spirit::Value result = tableRPC.execute(
             args[0],

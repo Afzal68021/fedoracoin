@@ -15,7 +15,7 @@ using namespace std;
 
 Value adduser(const Array& params, const CRPCContext& ctx, bool fHelp)
 {
-    if (fHelp || params.size() != 2)
+    if (fHelp || (ctx.isAdmin && params.size() != 2))
         throw runtime_error(
             "adduser <username> <password>\n"
             "Allows the login combination to access the server via RPC.");
@@ -23,8 +23,10 @@ Value adduser(const Array& params, const CRPCContext& ctx, bool fHelp)
     if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     string strUser = params[0].get_str();
-    string strPass = params[1].get_str();
-    if(!pusers->UserAdd(strUser, strPass))
+    SecureString pass;
+    pass.reserve(MAX_PASSPHRASE_SIZE);
+    pass = params[1].get_str().c_str();
+    if(!pusers->UserAdd(strUser, pass))
         throw JSONRPCError(RPC_INVALID_PARAMS, "Add user failed");
     return true;
 }
@@ -41,12 +43,13 @@ Value passwd(const Array& params, const CRPCContext& ctx, bool fHelp)
     if(params.size() == 2 && !ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     string strUser = params[0].get_str();
-    string strNewPass;
+    SecureString strNewPass;
+    strNewPass.reserve(MAX_PASSPHRASE_SIZE);
     if(params.size() > 1)
-        strNewPass = params[1].get_str();
+        strNewPass = params[1].get_str().c_str();
     else
     {
-        strNewPass = strUser;
+        strNewPass = strUser.c_str();
         strUser = ctx.username;
     }
     if(!pusers->UserExists(strUser))
@@ -66,7 +69,9 @@ Value authuser(const Array& params, const CRPCContext& ctx, bool fHelp)
     if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     string strUser = params[0].get_str();
-    string strPass = params[1].get_str();
+    SecureString strPass;
+    strPass.reserve(MAX_PASSPHRASE_SIZE);
+    strPass = params[1].get_str().c_str();
 
     return pusers->UserAuth(strUser, strPass);
 }

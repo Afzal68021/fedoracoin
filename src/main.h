@@ -209,18 +209,6 @@ bool VerifySignature(const CCoins& txFrom, const CTransaction& txTo, unsigned in
 /** Abort with a message */
 bool AbortNode(const std::string &msg);
 
-
-
-
-
-
-
-
-
-
-
-bool GetWalletFile(CWallet* pwallet, std::string &strWalletFileOut);
-
 struct CDiskBlockPos
 {
     int nFile;

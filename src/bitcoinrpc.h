@@ -13,6 +13,7 @@
 class CUserDB;
 class CBlockIndex;
 class CReserveKey;
+class CWallet;
 
 #include "json/json_spirit_reader_template.h"
 #include "json/json_spirit_writer_template.h"
@@ -100,6 +101,7 @@ public:
     bool isAuthed;
     bool isAdmin;
     std::string username;
+    CWallet* wallet;
 };
 
 typedef json_spirit::Value(*rpcfn_type)(const json_spirit::Array& params, const CRPCContext& ctx, bool fHelp);
@@ -149,8 +151,8 @@ extern json_spirit::Value ValueFromAmount(int64 amount);
 extern json_spirit::Value ValueFromAmount(uint64 amount);
 extern double GetDifficulty(const CBlockIndex* blockindex = NULL);
 extern std::string HexBits(unsigned int nBits);
-extern std::string HelpRequiringPassphrase();
-extern void EnsureWalletIsUnlocked();
+extern std::string HelpRequiringPassphrase(const CRPCContext& ctx);
+extern void EnsureWalletIsUnlocked(const CRPCContext& ctx);
 
 extern json_spirit::Value getconnectioncount(const json_spirit::Array& params, const CRPCContext& ctx, bool fHelp); // in rpcnet.cpp
 extern json_spirit::Value getpeerinfo(const json_spirit::Array& params, const CRPCContext& ctx, bool fHelp);

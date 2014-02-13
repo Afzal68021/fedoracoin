@@ -31,6 +31,10 @@
 #include <unistd.h> // for sysconf
 #endif
 
+/** Maximum passphrase length */
+static const int MAX_PASSPHRASE_SIZE = 1024;
+
+
 /**
  * Thread-safe class to keep track of locked (ie, non-swappable) memory pages.
  *

@@ -20,6 +20,9 @@
 
 using namespace std;
 
+CWallet* pwalletMain;
+CCriticalSection cs_userWallets;
+map<string, CWallet*> userWallets;
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -991,7 +994,7 @@ uint64 CWallet::GetImmatureBalance() const
 }
 
 // populate vCoins with vector of spendable COutputs
-void CWallet::AvailableCoins(const CRPCContext& ctx, vector<COutput>& vCoins, bool fOnlyConfirmed, const CCoinControl *coinControl)
+void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const CCoinControl *coinControl)
 {
     vCoins.clear();
     {
@@ -1009,28 +1012,6 @@ void CWallet::AvailableCoins(const CRPCContext& ctx, vector<COutput>& vCoins, bo
             if (pcoin->IsCoinBase() && pcoin->GetBlocksToMaturity() > 0)
                 continue;
 
-            list<pair<CTxDestination, uint64> > listReceived;
-            list<pair<CTxDestination, uint64> > listSent;
-            uint64 nFee;
-            string strSentAccount;
-            pcoin->GetAmounts(listReceived, listSent, nFee, strSentAccount);
-            if(!ctx.isAdmin && (strSentAccount.empty() || !pusers->UserOwnsAccount(ctx.username, strSentAccount)))
-            {
-                bool auth = false;
-                BOOST_FOREACH(const PAIRTYPE(CTxDestination, uint64)& r, listReceived)
-                {
-                    string account;
-                    if (mapAddressBook.count(r.first))
-                        account = mapAddressBook[r.first];
-                    if(!account.empty() && pusers->UserOwnsAccount(ctx.username, account))
-                    {
-                        auth = true;
-                        break;
-                    }
-                }
-                if(!auth)
-                    continue;
-            }
             for (unsigned int i = 0; i < pcoin->vout.size(); i++) {
                 if (!(pcoin->IsSpent(i)) && IsMine(pcoin->vout[i]) &&
                     !IsLockedCoin((*it).first, i) && pcoin->vout[i].nValue >= nMinimumInputValue &&
@@ -1087,7 +1068,7 @@ static void ApproximateBestSubset(vector<pair<uint64, pair<const CWalletTx*,unsi
     }
 }
 
-bool CWallet::SelectCoinsMinConf(CRPCContext ctx, uint64 nTargetValue, int nConfMine, int nConfTheirs, vector<COutput> vCoins,
+bool CWallet::SelectCoinsMinConf(uint64 nTargetValue, int nConfMine, int nConfTheirs, vector<COutput> vCoins,
                                  set<pair<const CWalletTx*,unsigned int> >& setCoinsRet, uint64& nValueRet)
 {
     setCoinsRet.clear();
@@ -1105,29 +1086,6 @@ bool CWallet::SelectCoinsMinConf(CRPCContext ctx, uint64 nTargetValue, int nConf
     BOOST_FOREACH(COutput output, vCoins)
     {
         const CWalletTx *pcoin = output.tx;
-
-        list<pair<CTxDestination, uint64> > listReceived;
-        list<pair<CTxDestination, uint64> > listSent;
-        uint64 nFee;
-        string strSentAccount;
-        pcoin->GetAmounts(listReceived, listSent, nFee, strSentAccount);
-        if(!ctx.isAdmin && (strSentAccount.empty() || !pusers->UserOwnsAccount(ctx.username, strSentAccount)))
-        {
-            bool auth = false;
-            BOOST_FOREACH(const PAIRTYPE(CTxDestination, uint64)& r, listReceived)
-            {
-                string account;
-                if (mapAddressBook.count(r.first))
-                    account = mapAddressBook[r.first];
-                if(!account.empty() && pusers->UserOwnsAccount(ctx.username, account))
-                {
-                    auth = true;
-                    break;
-                }
-            }
-            if(!auth)
-                continue;
-        }
 
         if (output.nDepth < (pcoin->IsFromMe() ? nConfMine : nConfTheirs))
             continue;
@@ -1209,10 +1167,10 @@ bool CWallet::SelectCoinsMinConf(CRPCContext ctx, uint64 nTargetValue, int nConf
     return true;
 }
 
-bool CWallet::SelectCoins(CRPCContext ctx, uint64 nTargetValue, set<pair<const CWalletTx*,unsigned int> >& setCoinsRet, uint64& nValueRet, const CCoinControl* coinControl)
+bool CWallet::SelectCoins(uint64 nTargetValue, set<pair<const CWalletTx*,unsigned int> >& setCoinsRet, uint64& nValueRet, const CCoinControl* coinControl)
 {
     vector<COutput> vCoins;
-    AvailableCoins(ctx, vCoins, true, coinControl);
+    AvailableCoins(vCoins, true, coinControl);
     
     // coin control -> return all selected outputs (we want all selected to go into the transaction for sure)
     if (coinControl && coinControl->HasSelected())
@@ -1225,15 +1183,15 @@ bool CWallet::SelectCoins(CRPCContext ctx, uint64 nTargetValue, set<pair<const C
         return (nValueRet >= nTargetValue);
     }
 
-    return (SelectCoinsMinConf(ctx, nTargetValue, 1, 6, vCoins, setCoinsRet, nValueRet) ||
-            SelectCoinsMinConf(ctx, nTargetValue, 1, 1, vCoins, setCoinsRet, nValueRet) ||
-            SelectCoinsMinConf(ctx, nTargetValue, 0, 1, vCoins, setCoinsRet, nValueRet));
+    return (SelectCoinsMinConf(nTargetValue, 1, 6, vCoins, setCoinsRet, nValueRet) ||
+            SelectCoinsMinConf(nTargetValue, 1, 1, vCoins, setCoinsRet, nValueRet) ||
+            SelectCoinsMinConf(nTargetValue, 0, 1, vCoins, setCoinsRet, nValueRet));
 }
 
 
 
 
-bool CWallet::CreateTransaction(const CRPCContext& ctx, const vector<pair<CScript, uint64> >& vecSend,
+bool CWallet::CreateTransaction(const vector<pair<CScript, uint64> >& vecSend,
                                 CWalletTx& wtxNew, CReserveKey& reservekey, uint64& nFeeRet, std::string& strFailReason, bool bMixCoins, const CCoinControl* coinControl)
 {
     uint64 nValue = 0;
@@ -1428,7 +1386,7 @@ bool CWallet::CreateTransaction(const CRPCContext& ctx, const vector<pair<CScrip
                 // Choose coins to use
                 set<pair<const CWalletTx*,unsigned int> > setCoins;
                 uint64 nValueIn = 0;
-                if (!SelectCoins(ctx, nTotalValue, setCoins, nValueIn, coinControl))
+                if (!SelectCoins(nTotalValue, setCoins, nValueIn, coinControl))
                 {
                     strFailReason = _("Insufficient funds");
                     return false;
@@ -1543,12 +1501,12 @@ bool CWallet::CreateTransaction(const CRPCContext& ctx, const vector<pair<CScrip
     return true;
 }
 
-bool CWallet::CreateTransaction(const CRPCContext& ctx, CScript scriptPubKey, uint64 nValue,
+bool CWallet::CreateTransaction(CScript scriptPubKey, uint64 nValue,
                                 CWalletTx& wtxNew, CReserveKey& reservekey, uint64& nFeeRet, std::string& strFailReason, bool bMixCoins, const CCoinControl* coinControl)
 {
     vector< pair<CScript, uint64> > vecSend;
     vecSend.push_back(make_pair(scriptPubKey, nValue));
-    return CreateTransaction(ctx, vecSend, wtxNew, reservekey, nFeeRet, strFailReason, bMixCoins, coinControl);
+    return CreateTransaction(vecSend, wtxNew, reservekey, nFeeRet, strFailReason, bMixCoins, coinControl);
 }
 
 // Call after CreateTransaction unless you want to abort
@@ -1603,7 +1561,7 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey)
 
 
 
-string CWallet::SendMoney(const CRPCContext& ctx, CScript scriptPubKey, uint64 nValue, CWalletTx& wtxNew, bool bMixCoins, bool fAskFee)
+string CWallet::SendMoney(CScript scriptPubKey, uint64 nValue, CWalletTx& wtxNew, bool bMixCoins, bool fAskFee)
 {
     CReserveKey reservekey(this);
     uint64 nFeeRequired;
@@ -1616,7 +1574,7 @@ string CWallet::SendMoney(const CRPCContext& ctx, CScript scriptPubKey, uint64 n
     }
     string strError;
 
-    if (!CreateTransaction(ctx, scriptPubKey, nValue, wtxNew, reservekey, nFeeRequired, strError, bMixCoins))
+    if (!CreateTransaction(scriptPubKey, nValue, wtxNew, reservekey, nFeeRequired, strError, bMixCoins))
     {
         if (nValue + nFeeRequired > GetBalance())
             strError = strprintf(_("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!"), FormatMoney(nFeeRequired).c_str());
@@ -1664,24 +1622,14 @@ int64 CWallet::GetAccountBalance(const string& strAccount, int nMinDepth)
     return GetAccountBalance(walletdb, strAccount, nMinDepth);
 }
 
-string CWallet::SendMoneyToDestination(const CRPCContext& ctx, const CTxDestination& address, uint64 nValue, CWalletTx& wtxNew, bool bMixCoins, bool fAskFee)
+string CWallet::SendMoneyToDestination(const CTxDestination& address, uint64 nValue, CWalletTx& wtxNew, bool bMixCoins, bool fAskFee)
 {
     // Check amount
     if (nValue <= 0)
         return _("Invalid amount");
 
     uint64 nBalance = GetBalance();
-    if (!ctx.isAdmin)
-    {
-        std::list<string> accts;
-        if(!pusers->UserAccountList(ctx.username, accts))
-            return _("No accounts on server");
-        nBalance = 0;
-        for(std::list<string>::iterator it = accts.begin(); it != accts.end(); ++it)
-        {
-            nBalance += GetAccountBalance(*it, 0);
-        }
-    }
+
     if (nValue + nTransactionFee > nBalance)
         return _("Insufficient funds");
 
@@ -1689,7 +1637,7 @@ string CWallet::SendMoneyToDestination(const CRPCContext& ctx, const CTxDestinat
     CScript scriptPubKey;
     scriptPubKey.SetDestination(address);
 
-    return SendMoney(ctx, scriptPubKey, nValue, wtxNew, bMixCoins, fAskFee);
+    return SendMoney(scriptPubKey, nValue, wtxNew, bMixCoins, fAskFee);
 }
 
 
@@ -2167,5 +2115,66 @@ void CWallet::ListLockedCoins(std::vector<COutPoint>& vOutpts)
         COutPoint outpt = (*it);
         vOutpts.push_back(outpt);
     }
+}
+
+CWallet* CWallet::GetUserWallet(const CRPCContext& ctx, int* errRet)
+{
+    // wallet creation
+    if(ctx.isAdmin) return pwalletMain;
+
+    LOCK(cs_userWallets);
+    if(userWallets.count(ctx.username))
+        return userWallets[ctx.username];
+
+    bool fFirstRun = true;
+    boost::filesystem::create_directory(GetDataDir() / "wallets");
+    CWallet* userwallet = new CWallet("wallets/" + ctx.username + ".dat");
+    DBErrors nLoadWalletRet = userwallet->LoadWallet(fFirstRun);
+    if(errRet)
+        *errRet = 0;
+    if (nLoadWalletRet != DB_LOAD_OK)
+    {
+        if(errRet)
+            *errRet = nLoadWalletRet;
+        return NULL;
+    }
+
+    /*if (GetBoolArg("-upgradewallet", fFirstRun))
+    {
+        int nMaxVersion = GetArg("-upgradewallet", 0);
+        if (nMaxVersion == 0) // the -upgradewallet without argument case
+        {
+            printf("Performing wallet upgrade to %i\n", FEATURE_LATEST);
+            nMaxVersion = CLIENT_VERSION;
+            pwalletMain->SetMinVersion(FEATURE_LATEST); // permanently upgrade the wallet immediately
+        }
+        else
+            printf("Allowing wallet upgrade up to %i\n", nMaxVersion);
+        if (nMaxVersion < pwalletMain->GetVersion())
+            strErrors << _("Cannot downgrade wallet") << "\n";
+        pwalletMain->SetMaxVersion(nMaxVersion);
+    }*/
+
+    if (fFirstRun)
+    {
+        // Create new keyUser and set as default key
+        RandAddSeedPerfmon();
+
+        CPubKey newDefaultKey;
+        if (userwallet->GetKeyFromPool(newDefaultKey, false)) {
+            userwallet->SetDefaultKey(newDefaultKey);
+            if (!userwallet->SetAddressBookName(userwallet->vchDefaultKey.GetID(), ""))
+            {
+                if(errRet)
+                    *errRet = 0x10;
+                return NULL;
+            }
+        }
+
+        userwallet->SetBestChain(CBlockLocator(pindexBest));
+    }
+    RegisterWallet(userwallet);
+    userWallets[ctx.username] = userwallet;
+    return userwallet;
 }
 

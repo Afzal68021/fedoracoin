@@ -44,19 +44,6 @@ Value importprivkey(const Array& params, const CRPCContext& ctx, bool fHelp)
     if (params.size() > 1)
         strAccount = params[1].get_str();
 
-    if (!strAccount.empty() && !ctx.isAdmin)
-    {
-        if(!pusers->UserOwnsAccount(ctx.username, strAccount))
-        {
-            string temp;
-            if(!pusers->UserAccountAdd(ctx.username, strAccount, temp))
-                return false;
-            strAccount = temp;
-        }
-    }
-    else if (!ctx.isAdmin)
-        pusers->UserAccountDefault(ctx.username, strAccount);
-
     // Whether to perform rescan after import
     bool fRescan = true;
     if (params.size() > 2)
@@ -71,17 +58,17 @@ Value importprivkey(const Array& params, const CRPCContext& ctx, bool fHelp)
     CPubKey pubkey = key.GetPubKey();
     CKeyID vchAddress = pubkey.GetID();
     {
-        LOCK2(cs_main, pwalletMain->cs_wallet);
+        LOCK2(cs_main, ctx.wallet->cs_wallet);
 
-        pwalletMain->MarkDirty();
-        pwalletMain->SetAddressBookName(vchAddress, strAccount);
+        ctx.wallet->MarkDirty();
+        ctx.wallet->SetAddressBookName(vchAddress, strAccount);
 
-        if (!pwalletMain->AddKeyPubKey(key, pubkey))
+        if (!ctx.wallet->AddKeyPubKey(key, pubkey))
             throw JSONRPCError(RPC_WALLET_ERROR, "Error adding key to wallet");
 
         if (fRescan) {
-            pwalletMain->ScanForWalletTransactions(pindexGenesisBlock, true);
-            pwalletMain->ReacceptWalletTransactions();
+            ctx.wallet->ScanForWalletTransactions(pindexGenesisBlock, true);
+            ctx.wallet->ReacceptWalletTransactions();
         }
     }
 
@@ -103,12 +90,8 @@ Value dumpprivkey(const Array& params, const CRPCContext& ctx, bool fHelp)
     if (!address.GetKeyID(keyID))
         throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to a key");
 
-    map<CTxDestination, string>::iterator mi = pwalletMain->mapAddressBook.find(address.Get());
-    if (!ctx.isAdmin && (mi == pwalletMain->mapAddressBook.end() || (*mi).second.empty() || !pusers->UserOwnsAccount(ctx.username, (*mi).second)))
-        throw JSONRPCError(RPC_WALLET_ERROR, "Private key for address " + strAddress + " is not known");
-
     CKey vchSecret;
-    if (!pwalletMain->GetKey(keyID, vchSecret))
+    if (!ctx.wallet->GetKey(keyID, vchSecret))
         throw JSONRPCError(RPC_WALLET_ERROR, "Private key for address " + strAddress + " is not known");
 
 

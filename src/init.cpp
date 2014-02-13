@@ -26,7 +26,6 @@
 using namespace std;
 using namespace boost;
 
-CWallet* pwalletMain;
 CClientUIInterface uiInterface;
 
 #ifdef WIN32
@@ -99,7 +98,16 @@ void Shutdown()
     nTransactionsUpdated++;
     StopRPCThreads();
     ShutdownRPCMining();
-    if (pwalletMain)
+    bool userLoaded = false;
+    for(std::map<std::string, CWallet*>::iterator ii = userWallets.begin(); ii != userWallets.end(); ii++)
+    {
+        if((*ii).second)
+        {
+            userLoaded = true;
+            break;
+        }
+    }
+    if (pwalletMain || userLoaded)
         bitdb.Flush(false);
     GenerateBitcoins(false, NULL);
     StopNode();
@@ -107,6 +115,11 @@ void Shutdown()
         LOCK(cs_main);
         if (pwalletMain)
             pwalletMain->SetBestChain(CBlockLocator(pindexBest));
+        if(userLoaded)
+            for(std::map<std::string, CWallet*>::iterator ii = userWallets.begin(); ii != userWallets.end(); ii++)
+                if((*ii).second)
+                    (*ii).second->SetBestChain(CBlockLocator(pindexBest));
+
         if (pblocktree)
             pblocktree->Flush();
         if (pcoinsTip)
@@ -115,12 +128,23 @@ void Shutdown()
         delete pcoinsdbview; pcoinsdbview = NULL;
         delete pblocktree; pblocktree = NULL;
     }
-    if (pwalletMain)
+    if (pwalletMain || userLoaded)
         bitdb.Flush(true);
     boost::filesystem::remove(GetPidFile());
-    UnregisterWallet(pwalletMain);
     if (pwalletMain)
+    {
+        UnregisterWallet(pwalletMain);
         delete pwalletMain;
+    }
+
+    if(userLoaded)
+        for(std::map<std::string, CWallet*>::iterator ii = userWallets.begin(); ii != userWallets.end(); ii++)
+            if((*ii).second)
+            {
+                UnregisterWallet((*ii).second);
+                delete (*ii).second;
+            }
+
     printf("Shutdown : done\n");
 }
 

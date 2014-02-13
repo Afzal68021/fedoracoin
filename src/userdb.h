@@ -23,14 +23,9 @@ public:
     bool RootAccountSet(std::string username);
     bool RootAccountGet(std::string &username);
     bool UserExists(std::string username);
-    bool UserAdd(std::string username, std::string password);
-    bool UserUpdate(std::string username, std::string password);
-    bool UserAuth(std::string username, std::string password);
-    bool UserAccountAdd(std::string username, std::string account, std::string &accountInternal);
-    bool UserAccountDefault(std::string username, std::string &account);
-    bool UserAccountExists(std::string account);
-    bool UserOwnsAccount(std::string username, std::string account);
-    bool UserAccountList(std::string username, std::list<std::string> &accounts);
+    bool UserAdd(std::string username, const SecureString &password);
+    bool UserUpdate(std::string username, const SecureString &password);
+    bool UserAuth(std::string username, const SecureString &password);
 };
 
 #endif // BITCOIN_TXDB_LEVELDB_H

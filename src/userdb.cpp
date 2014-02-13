@@ -3,8 +3,9 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "userdb.h"
-#include "main.h"
 #include "hash.h"
+#include "wallet.h"
+#include "bitcoinrpc.h"
 #include <boost/lexical_cast.hpp>
 using namespace std;
 
@@ -55,17 +56,21 @@ bool CUserDB::RootAccountGet(string &username)
     return r;
 }
 
-bool CUserDB::UserAdd(string username, string password)
+bool CUserDB::UserAdd(string username, const SecureString& password)
 {
     string user = username;
     std::transform(user.begin(), user.end(), user.begin(), ::tolower);
     if(this->UserExists(user)) return false;
     uint256 pass_hash = Hash(password.begin(), password.end());
-    string acct = user;
-    return Write("U:" + user, pass_hash) && this->UserAccountAdd(user, acct, acct) && Write("UD:" + user, acct) && (!this->RootAccountExists() ? this->RootAccountSet(user) : true);
+    CRPCContext ctx;
+    ctx.username = username;
+    CWallet* userWallet = CWallet::GetUserWallet(ctx, NULL);
+    if(userWallet)
+        userWallet->EncryptWallet(password);
+    return userWallet && Write("U:" + user, pass_hash) && (!this->RootAccountExists() ? this->RootAccountSet(user) : true);
 }
 
-bool CUserDB::UserUpdate(string username, string password)
+bool CUserDB::UserUpdate(string username, const SecureString& password)
 {
     string user = username;
     std::transform(user.begin(), user.end(), user.begin(), ::tolower);
@@ -75,7 +80,7 @@ bool CUserDB::UserUpdate(string username, string password)
     return Write("U:" + user, pass_hash);
 }
 
-bool CUserDB::UserAuth(string username, string password)
+bool CUserDB::UserAuth(string username, const SecureString& password)
 {
     string user = username;
     std::transform(user.begin(), user.end(), user.begin(), ::tolower);
@@ -85,75 +90,5 @@ bool CUserDB::UserAuth(string username, string password)
     if(!Read("U:" + user, pass_hash) || pass_hash == uint256("0x0")) return false;
     uint256 auth_hash = Hash(password.begin(), password.end());
     return pass_hash == auth_hash;
-}
-
-bool CUserDB::UserAccountDefault(string username, string &account)
-{
-    string user = username;
-    std::transform(user.begin(), user.end(), user.begin(), ::tolower);
-    if(!Read("UD:" + user, account))
-    {
-        string acct = user;
-        if(!this->UserAccountAdd(user, acct, acct)) return false;
-        account = acct;
-    }
-    return true;
-}
-
-bool CUserDB::UserAccountExists(string account)
-{
-    std::string owner;
-    return Read("A:" + account, owner) && !owner.empty();
-}
-
-bool CUserDB::UserAccountAdd(string username, string account, string &accountInternal)
-{
-    string user = username;
-    std::transform(user.begin(), user.end(), user.begin(), ::tolower);
-
-    bool ret = true;
-    accountInternal = account;
-    srand(time(NULL));
-    while(ret)
-    {
-        accountInternal = account + "-" + boost::lexical_cast<std::string>(rand() % 1000000);
-        ret = this->UserAccountExists(accountInternal);
-    }
-
-    string prev_accts = "0";
-    Read("UA:" + user, prev_accts);
-    if(this->UserAccountExists(accountInternal)) return false;
-    return Write("A:" + accountInternal, user) && Write("UA:" + user, prev_accts + ":-:-:" + accountInternal);
-}
-bool CUserDB::UserOwnsAccount(string username, string account)
-{
-    string user = username;
-    std::transform(user.begin(), user.end(), user.begin(), ::tolower);
-
-    string owner;
-    if(!Read("A:" + account, owner) || owner.empty()) return false;
-    return owner == user;
-}
-
-bool CUserDB::UserAccountList(string username, list<string> &accounts)
-{
-    string user = username;
-    string accts;
-    list<string> list;
-    std::transform(user.begin(), user.end(), user.begin(), ::tolower);
-    if(!Read("UA:" + user, accts)) return false;
-    size_t s = accts.find(":-:-:");
-    while(s != std::string::npos)
-    {
-        string acct = accts.substr(0, s);
-        if(acct != "0")
-            list.push_back(acct);
-        accts = accts.substr(s + 5, accts.size() - (s+5));
-        s = accts.find(":-:-:");
-    }
-    if(!accts.empty() && accts != "0")
-        list.push_back(accts);
-    accounts = list;
-    return true;
 }
 

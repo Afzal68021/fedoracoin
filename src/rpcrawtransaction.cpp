@@ -142,33 +142,6 @@ Value getrawtransaction(const Array& params, const CRPCContext& ctx, bool fHelp)
     if (!GetTransaction(hash, tx, hashBlock, true))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available about transaction");
 
-    if(!ctx.isAdmin)
-    {
-        const CWalletTx& wtx = pwalletMain->mapWallet[hash];
-        uint64 allFee;
-        string strSentAccount;
-        list<pair<CTxDestination, uint64> > listReceived;
-        list<pair<CTxDestination, uint64> > listSent;
-        wtx.GetAmounts(listReceived, listSent, allFee, strSentAccount);
-        if(!pusers->UserOwnsAccount(ctx.username, strSentAccount))
-        {
-            bool recv = false;
-            // Received
-            if (listReceived.size() > 0)
-            {
-                BOOST_FOREACH(const PAIRTYPE(CTxDestination, uint64)& r, listReceived)
-                {
-                    if (pwalletMain->mapAddressBook.count(r.first) && pusers->UserOwnsAccount(ctx.username, pwalletMain->mapAddressBook[r.first]))
-                    {
-                        recv = true;
-                        break;
-                    }
-                }
-            }
-            if(!recv)
-                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available about transaction");
-        }
-    }
     CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
     ssTx << tx;
     string strHex = HexStr(ssTx.begin(), ssTx.end());
@@ -192,8 +165,6 @@ Value listunspent(const Array& params, const CRPCContext& ctx, bool fHelp)
             "Optionally filtered to only include txouts paid to specified addresses.\n"
             "Results are an array of Objects, each of which has:\n"
             "{txid, vout, scriptPubKey, amount, confirmations}");
-
-    if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     RPCTypeCheck(params, list_of(int_type)(int_type)(array_type));
 
@@ -222,8 +193,8 @@ Value listunspent(const Array& params, const CRPCContext& ctx, bool fHelp)
 
     Array results;
     vector<COutput> vecOutputs;
-    assert(pwalletMain != NULL);
-    pwalletMain->AvailableCoins(ctx, vecOutputs, false);
+    assert(ctx.wallet != NULL);
+    ctx.wallet->AvailableCoins(vecOutputs, false);
     BOOST_FOREACH(const COutput& out, vecOutputs)
     {
         if (out.nDepth < nMinDepth || out.nDepth > nMaxDepth)
@@ -248,8 +219,8 @@ Value listunspent(const Array& params, const CRPCContext& ctx, bool fHelp)
         if (ExtractDestination(out.tx->vout[out.i].scriptPubKey, address))
         {
             entry.push_back(Pair("address", CBitcoinAddress(address).ToString()));
-            if (pwalletMain->mapAddressBook.count(address))
-                entry.push_back(Pair("account", pwalletMain->mapAddressBook[address]));
+            if (ctx.wallet->mapAddressBook.count(address))
+                entry.push_back(Pair("account", ctx.wallet->mapAddressBook[address]));
         }
         entry.push_back(Pair("scriptPubKey", HexStr(pk.begin(), pk.end())));
         if (pk.IsPayToScriptHash())
@@ -259,7 +230,7 @@ Value listunspent(const Array& params, const CRPCContext& ctx, bool fHelp)
             {
                 const CScriptID& hash = boost::get<const CScriptID&>(address);
                 CScript redeemScript;
-                if (pwalletMain->GetCScript(hash, redeemScript))
+                if (ctx.wallet->GetCScript(hash, redeemScript))
                     entry.push_back(Pair("redeemScript", HexStr(redeemScript.begin(), redeemScript.end())));
             }
         }
@@ -369,9 +340,9 @@ Value signrawtransaction(const Array& params, const CRPCContext& ctx, bool fHelp
             "Returns json object with keys:\n"
             "  hex : raw transaction with signature(s) (hex-encoded string)\n"
             "  complete : 1 if transaction has a complete set of signature (0 if not)"
-            + HelpRequiringPassphrase());
+            + HelpRequiringPassphrase(ctx));
 
-    if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
+    //if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
     RPCTypeCheck(params, list_of(str_type)(array_type)(array_type)(str_type), true);
 
@@ -433,7 +404,7 @@ Value signrawtransaction(const Array& params, const CRPCContext& ctx, bool fHelp
         }
     }
     else
-        EnsureWalletIsUnlocked();
+        EnsureWalletIsUnlocked(ctx);
 
     // Add previous txouts given in the RPC call:
     if (params.size() > 1 && params[1].type() != null_type)
@@ -489,7 +460,7 @@ Value signrawtransaction(const Array& params, const CRPCContext& ctx, bool fHelp
         }
     }
 
-    const CKeyStore& keystore = ((fGivenKeys || !pwalletMain) ? tempKeystore : *pwalletMain);
+    const CKeyStore& keystore = ((fGivenKeys || !ctx.wallet) ? tempKeystore : *ctx.wallet);
 
     int nHashType = SIGHASH_ALL;
     if (params.size() > 3 && params[3].type() != null_type)

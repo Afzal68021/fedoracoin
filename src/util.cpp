@@ -1552,3 +1552,15 @@ bool NewThread(void(*pfn)(void*), void* parg)
     }
     return true;
 }
+bool NewThread2(void(*pfn)(const void*, void*), const void* parg1, void* parg2)
+{
+    try
+    {
+        boost::thread(pfn, parg1, parg2); // thread detaches when out of scope
+    } catch(boost::thread_resource_error &e) {
+        printf("Error creating thread: %s\n", e.what());
+        return false;
+    }
+    return true;
+}
+
