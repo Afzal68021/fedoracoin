@@ -21,14 +21,17 @@ CONFIG += exceptions
 #    BOOST_INCLUDE_PATH, BOOST_LIB_PATH, BDB_INCLUDE_PATH,
 #    BDB_LIB_PATH, OPENSSL_INCLUDE_PATH and OPENSSL_LIB_PATH respectively
 
-BOOST_INCLUDE_PATH=C:/deps/boost_1_54_0
-BOOST_LIB_PATH=C:/deps/boost_1_54_0/stage/lib
-BDB_INCLUDE_PATH=c:/deps/db-4.8.30.NC/build_unix
-BDB_LIB_PATH=c:/deps/db-4.8.30.NC/build_unix
-OPENSSL_INCLUDE_PATH=c:/deps/openssl-1.0.1e/include
-OPENSSL_LIB_PATH=c:/deps/openssl-1.0.1e
-MINIUPNPC_LIB_PATH=c:/deps/boost_1_54_0/miniupnpc
-MINIUPNPC_INCLUDE_PATH=c:/deps
+win32 {
+    BOOST_INCLUDE_PATH=C:/deps/boost_1_54_0
+    BOOST_LIB_PATH=C:/deps/boost_1_54_0/stage/lib
+    BDB_INCLUDE_PATH=c:/deps/db-4.8.30.NC/build_unix
+    BDB_LIB_PATH=c:/deps/db-4.8.30.NC/build_unix
+    OPENSSL_INCLUDE_PATH=c:/deps/openssl-1.0.1e/include
+    OPENSSL_LIB_PATH=c:/deps/openssl-1.0.1e
+    MINIUPNPC_LIB_PATH=c:/deps/boost_1_54_0/miniupnpc
+    MINIUPNPC_INCLUDE_PATH=c:/deps
+}
+
 USE_BUILD_INFO=1
 
 OBJECTS_DIR = build
