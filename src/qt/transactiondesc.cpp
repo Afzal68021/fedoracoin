@@ -85,28 +85,23 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx)
                         {
                             if (wallet->mapAddressBook.count(address))
                             {
-                                bool useaddr = false;
-
-                                CBitcoinAddress caddress;
+                                QString fromaddr = "unknown";
                                 BOOST_FOREACH(const CTxIn& txin, wtx.vin)
                                 {
                                     std::string str;
                                     str = txin.scriptSig.ToString();
                                     int idx = str.find_first_of(" ");
                                     str = str.substr(idx + 1, str.size() - (idx+1));
-                                    if(str.size() != 130)
-                                        break;
                                     std::vector<unsigned char> hex = ParseHex(str);
-                                    if(hex.size() != 65)
-                                        break;
                                     CPubKey key;
                                     key.Set(hex.begin(), hex.end());
+                                    CBitcoinAddress caddress;
                                     caddress.Set(key.GetID());
-                                    useaddr = true;
+                                    fromaddr = GUIUtil::HtmlEscape(caddress.ToString());
                                     break;
                                 }
 
-                                strHTML += "<b>" + tr("From") + ":</b> " + (useaddr ? GUIUtil::HtmlEscape(caddress.ToString()) : tr("unknown")) + "<br>";
+                                strHTML += "<b>" + tr("From") + ":</b> " + fromaddr + "<br>";
                                 strHTML += "<b>" + tr("To") + ":</b> ";
                                 strHTML += GUIUtil::HtmlEscape(CBitcoinAddress(address).ToString());
                                 if (!wallet->mapAddressBook[address].empty())
