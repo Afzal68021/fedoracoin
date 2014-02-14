@@ -1,7 +1,7 @@
 [Setup]
 AppId=FedoraCoin
 AppName=FedoraCoin
-AppVersion=0.55
+AppVersion=0.60
 DefaultDirName={pf}\FedoraCoin
 DefaultGroupName=FedoraCoin
 UninstallDisplayIcon={app}\fedoracoin-qt.exe
@@ -9,7 +9,7 @@ Compression=lzma2
 SolidCompression=yes
 OutputDir=..\release
 SourceDir=..\release
-OutputBaseFilename=fedoracoin-0.55-win32
+OutputBaseFilename=fedoracoin-0.60-win32
 
 [Files]
 Source: "fedoracoin-qt.exe"; DestDir: "{app}"
@@ -21,6 +21,7 @@ Source: "libwinpthread-1.dll"; DestDir: "{app}"
 Source: "QtCore4.dll"; DestDir: "{app}"
 Source: "QtGui4.dll"; DestDir: "{app}"
 Source: "QtNetwork4.dll"; DestDir: "{app}"
+Source: "CHANGELOG.txt"; DestDir: "{app}"
 
 [Icons]
 Name: "{group}\FedoraCoin"; Filename: "{app}\fedoracoin-qt.exe"
