@@ -96,7 +96,7 @@ QString BitcoinUnits::format(int unit, qint64 n, bool fPlus)
     qint64 n_abs = (n > 0 ? n : -n);
     qint64 quotient = n_abs / coin;
     qint64 remainder = n_abs % coin;
-    QString quotient_str = QString::number(quotient);
+    QString quotient_str = QLocale(QLocale::English).toString(quotient);
     QString remainder_str = QString::number(remainder).rightJustified(num_decimals, '0');
 
     // Right-trim excess zeros after the decimal point
@@ -109,6 +109,8 @@ QString BitcoinUnits::format(int unit, qint64 n, bool fPlus)
         quotient_str.insert(0, '-');
     else if (fPlus && n > 0)
         quotient_str.insert(0, '+');
+
+
     return quotient_str + QString(".") + remainder_str;
 }
 
