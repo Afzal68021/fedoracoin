@@ -271,15 +271,6 @@ Value listann(const Array& params, const CRPCContext& ctx, bool fHelp)
 
     if (!ctx.isAdmin) throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Method not found (unauthorized)");
 
-    CKeyID key(uint160("70160ae4613341dfb86c6c5490dbb886fbc3ccc0"));
-    CBitcoinAddress address;
-    address.Set(key);
-    CKeyID key2;
-    address.GetKeyID(key2);
-
-    //strFailReason = address.ToString();
-    //return false;
-
     std::stringstream ss;
     ss << "Current: " << nCurrentMixer << "\r\n\r\n";
     {
